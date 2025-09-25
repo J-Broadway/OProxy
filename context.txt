@@ -1,0 +1,2 @@
+Working on a TouchDesigner extension that uses Python Version 3.11.1
+Each .py file is a seperate DAT located in the project

@@ -1,0 +1,7 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+First line in file should always be a comment of the file name IE: # src.dat
