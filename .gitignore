@@ -7,3 +7,4 @@ oproxy.*.toe
 
 # Ignore folders named Backup
 Backup/
+.cursor/
