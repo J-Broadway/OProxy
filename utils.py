@@ -189,8 +189,9 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                         # For nested children, we need to pass the proper ancestor stack
                         # The parent has more siblings if there are more root containers or [END] coming
                         child_ancestor_stack = [parent_has_more_siblings]
-                        # Use the section_prefix + additional indentation for nested children
-                        nested_prefix = section_prefix + "  "  # Add 2 spaces for proper indentation under <Children>
+                        # Use the section_prefix + pipe_prefix + additional indentation for nested children
+                        # This ensures proper indentation under <Children>
+                        nested_prefix = section_prefix + pipe_prefix + "  "  # Add 2 spaces for proper indentation under <Children>
                         format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
                 else:
                     result.append(f"{section_prefix}{pipe_prefix}└─ <Children> {{}}")
