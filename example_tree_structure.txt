@@ -1,176 +1,71 @@
-﻿# example_tree_structure.DAT
-This document details out _tree() feature
+﻿# example_tree_structure.txt
 
-### Refined Mock Markdown Examples
-
-The archetypal structure for `detail='dev'` will guide the layout, with `full` including `OProxies` data and `minimal` showing only the basic hierarchy. All examples will maintain the newline before `root`, the `<OProxy [INFO]>` prefix, and the exact nesting structure you provided (e.g., `├─`, `└─` with 2-space indentation).
-
-#### 1. Example Output for `opr._tree(detail='dev')`
-This matches your proposed structure, showing both `OProxies` and `_OProxies` with all fields, serving as the archetypal layout.
-
-```markdown
+# Full Mode (replaces dev)
 <OProxy [INFO]>
-root
-  ├─ OProxies
-  │  ├─ Test
-  │  │  ├─ OPs
-  │  │  │  ├─ type:moviefileinTOP path:/project1/container1/moviefilein1
-  │  │  │  └─ type:moviefileinTOP path:/project1/container1/moviefilein2
-  │  │  ├─ Extensions: []
-  │  │  └─ Children: {}
-  │  └─ chops
-  │     ├─ OPs
-  │     │  ├─ type:constantCHOP path:/project1/container1/constant3
-  │     │  ├─ type:constantCHOP path:/project1/container1/test
-  │     │  └─ type:constantCHOP path:/project1/container1/constant2
-  │     ├─ Extensions: []
-  │     └─ Children: {}
-  └─ _OProxies
-     ├─ Test
-     │  ├─ OPs
-     │  │  ├─ moviefilein1
-     │  │  │  ├─ op: type:moviefileinTOP path:/project1/container1/moviefilein1
-     │  │  │  └─ initial_path: /project1/container1/moviefilein1
-     │  │  └─ moviefilein2
-     │  │     ├─ op: type:moviefileinTOP path:/project1/container1/moviefilein2
-     │  │     └─ initial_path: /project1/container1/moviefilein2
-     │  ├─ Extensions: []
-     │  └─ Children: {}
-     └─ chops
-        ├─ OPs
-        │  ├─ constant3
-        │  │  ├─ op: type:constantCHOP path:/project1/container1/constant3
-        │  │  └─ initial_path: /project1/container1/constant3
-        │  ├─ test
-        │  │  ├─ op: type:constantCHOP path:/project1/container1/test
-        │  │  └─ initial_path: /project1/container1/test
-        │  └─ constant2
-        │     ├─ op: type:constantCHOP path:/project1/container1/constant2
-        │     └─ initial_path: /project1/container1/constant2
-        ├─ Extensions
-        │  ├─ [0]
-        │  │  ├─ name: test
-        │  │  ├─ cls: None
-        │  │  ├─ func: new_func
-        │  │  ├─ dat_path: /project1/container1/tests
-        │  │  ├─ call: False
-        │  │  └─ args: None
-        │  └─ [1]
-        │     ├─ name: test_class
-        │     ├─ cls: myClass
-        │     ├─ func: None
-        │     ├─ dat_path: /project1/container1/tests
-        │     ├─ call: True
-        │     └─ args
-        │        ├─ test4
-        │        └─ args working
-        └─ Children: {}
-```
-
-#### 2. Example Output for `opr._tree(detail='full')`
-This follows the `dev` structure but includes only `OProxies` data, omitting `_OProxies` details like `initial_path` and full extension fields, focusing on a simpler view with extensions.
-
-```markdown
+<root>
+  ├─ Test
+  │  ├─ <OPs>
+  │  │  ├─ moviefilein1
+  │  │  │  └─ op: type:moviefileinTOP path:/project1/container1/moviefilein1
+  │  │  └─ moviefilein2
+  │  │     └─ op: type:moviefileinTOP path:/project1/container1/moviefilein2
+  │  ├─ <Extensions>
+  │  │  ├─ test_func
+  │  │  │  ├─ name: test_func
+  │  │  │  ├─ cls: None
+  │  │  │  ├─ func: new_func
+  │  │  │  ├─ dat_path: /project1/container1/tests
+  │  │  │  ├─ call: False
+  │  │  │  └─ args: None
+  │  │  └─ test_class
+  │  │     ├─ name: test_class
+  │  │     ├─ cls: myClass
+  │  │     ├─ func: None
+  │  │     ├─ dat_path: /project1/container1/tests
+  │  │     ├─ call: True
+  │  │     └─ args:
+  │  │        	- test4
+  │  │        	- args working
+  │  └─ <Children>
+  │     └─ chops
+  │        ├─ <OPs>
+  │        │  ├─ constant3
+  │        │  │  └─ op: type:constantCHOP path:/project1/container1/constant3
+  │        │  ├─ test
+  │        │  │  └─ op: type:constantCHOP path:/project1/container1/test
+  │        │  └─ constant2
+  │        │     └─ op: type:constantCHOP path:/project1/container1/constant2
+  │        ├─ <Extensions> []
+  │        └─ <Children> {}
+  └─[END]
+  
+# Minimal Mode
 <OProxy [INFO]>
-root
-  ├─ OProxies
-  │  ├─ Test
-  │  │  ├─ OPs
-  │  │  │  ├─ type:moviefileinTOP path:/project1/container1/moviefilein1
-  │  │  │  └─ type:moviefileinTOP path:/project1/container1/moviefilein2
-  │  │  ├─ Extensions: []
-  │  │  └─ Children: {}
+<root>
+  ├─ Test
+  │  ├─ <Extensions>
+  │  │  ├─ test_func
+  │  │  └─ test_class
   │  └─ chops
-  │     ├─ OPs
-  │     │  ├─ type:constantCHOP path:/project1/container1/constant3
-  │     │  ├─ type:constantCHOP path:/project1/container1/test
-  │     │  └─ type:constantCHOP path:/project1/container1/constant2
-  │     ├─ Extensions
-  │     │  ├─ [0]
-  │     │  │  ├─ name: test
-  │     │  │  ├─ func: new_func
-  │     │  │  ├─ call: False
-  │     │  └─ [1]
-  │     │     ├─ name: test_class
-  │     │     ├─ cls: myClass
-  │     │     ├─ call: True
-  │     │     └─ args
-  │     │        ├─ test4
-  │     │        └─ args working
-  │     └─ Children: {}
-  └─ _OProxies
-     (Omitted for 'full' mode)
-```
-
-**Notes**:
-- Omits `_OProxies` subtree to focus on `OProxies` data.
-- Includes `Extensions` with a subset of fields (`name`, `func`, `call`, `args`) for simplicity, omitting `cls`, `dat_path` unless needed (adjustable based on your preference).
-
-#### 3. Example Output for `opr._tree(detail='minimal')`
-This follows the `dev` structure but shows only node names and the basic hierarchy from `OProxies`, omitting all other details.
-
-```markdown
-<OProxy [INFO]>
-root
-  ├─ OProxies
-  │  ├─ Test
-  │  └─ chops
-  └─ _OProxies
-     (Omitted for 'minimal' mode)
-```
-
-**Notes**:
-- Omits `OPs`, `Extensions`, and `Children` to provide a high-level view.
-- `_OProxies` is omitted entirely, as it’s not relevant for `minimal` mode.
-
-#### 4. Example Output for `opr._tree(child='chops', detail='dev')` or `opr.chops._tree(detail='dev')`
-This starts from the `chops` node, maintaining the `dev` structure.
-
-```markdown
+  │     └─ <Extensions> []
+  └─[END]
+  
+# Child Parameter (opr.tree(child='chops', detail='full'))
 <OProxy [INFO]>
 chops
-  ├─ OProxies
-  │  ├─ OPs
-  │  │  ├─ type:constantCHOP path:/project1/container1/constant3
-  │  │  ├─ type:constantCHOP path:/project1/container1/test
-  │  │  └─ type:constantCHOP path:/project1/container1/constant2
-  │  ├─ Extensions: []
-  │  └─ Children: {}
-  └─ _OProxies
-     ├─ OPs
-     │  ├─ constant3
-     │  │  ├─ op: type:constantCHOP path:/project1/container1/constant3
-     │  │  └─ initial_path: /project1/container1/constant3
-     │  ├─ test
-     │  │  ├─ op: type:constantCHOP path:/project1/container1/test
-     │  │  └─ initial_path: /project1/container1/test
-     │  └─ constant2
-     │     ├─ op: type:constantCHOP path:/project1/container1/constant2
-     │     └─ initial_path: /project1/container1/constant2
-     ├─ Extensions
-     │  ├─ [0]
-     │  │  ├─ name: test
-     │  │  ├─ cls: None
-     │  │  ├─ func: new_func
-     │  │  ├─ dat_path: /project1/container1/tests
-     │  │  ├─ call: False
-     │  │  └─ args: None
-     │  └─ [1]
-     │     ├─ name: test_class
-     │     ├─ cls: myClass
-     │     ├─ func: None
-     │     ├─ dat_path: /project1/container1/tests
-     │     ├─ call: True
-     │     └─ args
-     │        ├─ test4
-     │        └─ args working
-     └─ Children: {}
-```
-
-#### 5. Example Output for `opr._tree(child='nonexistent', detail='dev')`
-This handles an invalid `child` with a warning.
-
-```markdown
-<OProxy [WARNING]>
-Child 'nonexistent' not found
-``
+  ├─ <OPs>
+  │  ├─ constant3
+  │  │  └─ op: type:constantCHOP path:/project1/container1/constant3
+  │  ├─ test
+  │  │  └─ op: type:constantCHOP path:/project1/container1/test
+  │  └─ constant2
+  │     └─ op: type:constantCHOP path:/project1/container1/constant2
+  ├─ <Extensions> []
+  └─ <Children> {}
+  └─[END]
+  
+# Child Parameter (opr._tree(child='chops', detail='minimal'))
+<OProxy [INFO]>
+chops
+  └─ <Extensions> []
+  └─[END]

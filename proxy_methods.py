@@ -51,7 +51,7 @@ def proxy_add(self, new_op):
 def proxy_remove(self, to_remove=None):
     if to_remove is None:  # Remove self (container) and children recursively
         # Recurse to remove children first
-        node = hierarchical_storage.get_node(self._opr._OProxies, self._dictPath)
+        node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
         for child_name in list(node['Children']):
             child_proxy = getattr(self, child_name, None)
             if child_proxy:
@@ -65,10 +65,10 @@ def proxy_remove(self, to_remove=None):
                 if name in parent_proxy['Children']:
                     del parent_proxy['Children'][name]
             else:
-                del self._opr.OProxies[name]  # Root removal
+                oproxies_raw = self._opr.OProxies.getRaw()
+                del oproxies_raw[name]  # Root removal
             
             hierarchical_storage.remove_node(self._opr.OProxies, self._dictPath)
-            hierarchical_storage.remove_node(self._opr._OProxies, self._dictPath)
         
         # Clean up attribute from parent
         if hasattr(self, '_parent'):  # Assume _parent back-ref added if needed
@@ -118,7 +118,7 @@ def proxy_refresh(self):
         return self  # No-op if no back-ref
     
     dict_path = self._dictPath
-    node = hierarchical_storage.get_node(self._opr._OProxies, dict_path)
+    node = hierarchical_storage.get_node(self._opr.OProxies, dict_path)
     mapping = node['OPs']
     changes = []  # Collect changes: ('remove', key, op) or ('update', old_key, new_key, op)
     refreshed_ops = []  # For printing dynamic statements on updates
@@ -157,7 +157,7 @@ def proxy_refresh(self):
                     while f"{new_key}_{i}" in mapping:
                         i += 1
                     resolved_new_key = f"{new_key}_{i}"
-                mapping[resolved_new_key] = {'op': op, 'initial_path': op.path}  # Update initial_path if needed, but keep original
+                mapping[resolved_new_key] = {'op': op}
                 del mapping[old_key]
                 # Append for printing
                 refreshed_ops.append((op, old_key, resolved_new_key))
@@ -166,55 +166,6 @@ def proxy_refresh(self):
         for op, old_key, new_key in refreshed_ops:
             log(f"Refreshed OP {op.path}: name changed from {old_key} to {new_key}")
     
-    # Sync ExtensionDATs similar to OPs
-    extension_mapping = node.get('ExtensionDATs', {})
-    extension_changes = []
-    refreshed_extensions = []
-    
-    for key, data in list(extension_mapping.items()):
-        op = data.get('op')
-        if op is None or not op.valid:
-            # Try to resolve from initial_path if moved
-            initial_path = data.get('initial_path')
-            new_op = td.op(initial_path)
-            if new_op and new_op.valid and new_op.name == key:
-                data['op'] = new_op
-                log(f"Updated Extension DAT path for {key} to {new_op.path}")
-            else:
-                extension_changes.append(('remove', key, op))
-                continue
-        current_name = op.name
-        if current_name != key:
-            extension_changes.append(('update', key, current_name, op))
-    
-    if extension_changes:
-        for change in extension_changes:
-            if change[0] == 'remove':
-                key, op = change[1], change[2]
-                op_name = op.name if op else key
-                log(f"Extension DAT {op_name} not found or invalid; removing")
-                del extension_mapping[key]
-            elif change[0] == 'update':
-                old_key, new_key, op = change[1:]
-                resolved_new_key = new_key
-                if new_key in extension_mapping:
-                    i = 1
-                    while f"{new_key}_{i}" in extension_mapping:
-                        i += 1
-                    resolved_new_key = f"{new_key}_{i}"
-                extension_mapping[resolved_new_key] = {'op': op, 'initial_path': op.path}
-                del extension_mapping[old_key]
-                refreshed_extensions.append((op, old_key, resolved_new_key))
-                
-                # Update dat_key in Extensions if referencing this
-                for ext in node.get('Extensions', []):
-                    if ext.get('dat_key') == old_key:
-                        ext['dat_key'] = resolved_new_key
-                        log(f"Updated extension {ext['name']} dat_key from {old_key} to {resolved_new_key}")
-        
-        # Print for refreshed Extension DATs
-        for op, old_key, new_key in refreshed_extensions:
-            log(f"Refreshed Extension DAT {op.path}: name changed from {old_key} to {new_key}")
     
     # Recurse to children
     for child_name in list(node['Children']):

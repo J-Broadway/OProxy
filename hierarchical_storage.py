@@ -1,10 +1,10 @@
 # hierarchical_storage.dat
 
-def init_node(dict_structure, path, is_detailed=False):
+def init_node(dict_structure, path):
     """
     Initialize a node in the hierarchical dictionary structure based on the path.
     Path can be a string like 'Test.another' or a list ['Test', 'another'].
-    Creates 'OPs', 'Extensions', 'Children' if not present; uses dict for 'OPs' if is_detailed (for _OProxies).
+    Creates 'OPs', 'Extensions', 'Children' if not present; uses dict for 'OPs' (detailed format).
     """
     if isinstance(path, str):
         path = path.split('.')
@@ -14,8 +14,7 @@ def init_node(dict_structure, path, is_detailed=False):
         if i > 0:
             current = current['Children']
         if segment not in current:
-            ops_struct = {} if is_detailed else []
-            current[segment] = {'OPs': ops_struct, 'Extensions': [], 'Children': {}}
+            current[segment] = {'OPs': {}, 'Extensions': [], 'Children': {}}
         current = current[segment]
 
 def get_node(dict_structure, path):

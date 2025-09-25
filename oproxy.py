@@ -1,13 +1,9 @@
-﻿# oproxy.dat
+﻿# oproxy.dat 
 from TDStoreTools import StorageManager
 import TDFunctions as TDF
 import td
 import types  # For MethodType in extension binding
 import ast_mod  # Import ast_mod for extraction
-
-""" TODO:
-        - Add ASCII tree style printing (Implemented in OPContainer._tree)
-"""
 
 # Imports from modular DATs
 log = mod('utils').log
@@ -31,15 +27,15 @@ class opr:
         storedItems = [
             {'name': 'OProxies', 'default': {}, 'readOnly': False,
              'property': True, 'dependable': True},
-            {'name': '_OProxies', 'default': {}, 'readOnly': False,
-             'property': True, 'dependable': True},
         ]
         self.storage = StorageManager(self, ownerComp, storedItems)
         
-        stored_proxies = self.OProxies
-        for name, data in dict(stored_proxies).items():
-            proxy = self._add(name, list(data['OPs']), restore=True)
-            self._restore_children(proxy, dict(data['Children']))
+        stored_proxies = self.OProxies.getRaw()
+        for name, data in stored_proxies.items():
+            # Convert dict-based OPs to list for _add
+            ops_list = [op_data['op'] for op_data in data['OPs'].values()]
+            proxy = self._add(name, ops_list, restore=True)
+            self._restore_children(proxy, data['Children'])
             proxy._refresh()
         
         # Apply persistent extensions after full restore
@@ -48,9 +44,11 @@ class opr:
         # Vestige log removed as per request
 
     def _restore_children(self, parent_proxy, children_data):
-        for child_name, child_data in dict(children_data).items():
-            child_proxy = parent_proxy._add(child_name, list(child_data['OPs']), restore=True)
-            self._restore_children(child_proxy, dict(child_data['Children']))
+        for child_name, child_data in children_data.items():
+            # Convert dict-based OPs to list for _add
+            ops_list = [op_data['op'] for op_data in child_data['OPs'].values()]
+            child_proxy = parent_proxy._add(child_name, ops_list, restore=True)
+            self._restore_children(child_proxy, child_data['Children'])
 
     def _add(self, name, op, parent=None, restore=True):
         # Type/validation checks and normalization
@@ -118,7 +116,7 @@ class opr:
         else:
             # Metaprogram a dynamic subclass with the given name, inheriting methods
             class_dict = {
-                '_add': lambda self, name, op: self._opr._add(name, op, parent=self),
+                '_add': lambda self, name, op, restore=True: self._opr._add(name, op, parent=self, restore=restore),
                 '_remove': proxy_remove,
                 '_refresh': proxy_refresh
             }
@@ -142,10 +140,6 @@ class opr:
             # Persist to storage using hierarchical structure
             hierarchical_storage.init_node(self.OProxies, proxy_instance._dictPath)
             node = hierarchical_storage.get_node(self.OProxies, proxy_instance._dictPath)
-            node['OPs'] = [o for o in op]
-            
-            hierarchical_storage.init_node(self._OProxies, proxy_instance._dictPath, is_detailed=True)
-            node = hierarchical_storage.get_node(self._OProxies, proxy_instance._dictPath)
             node['OPs'] = {}
             for o in op:
                 initial_name = o.name
@@ -155,7 +149,7 @@ class opr:
                     while f"{initial_name}_{i}" in node['OPs']:
                         i += 1
                     initial_name = f"{initial_name}_{i}"
-                node['OPs'][initial_name] = {'op': o, 'initial_path': o.path}
+                node['OPs'][initial_name] = {'op': o}
         
         return proxy_instance  # Return for chaining
 
@@ -222,7 +216,7 @@ class opr:
                 except Exception as e:
                     log(f"Failed to apply extension '{ext.get('name', 'unknown')}' to {'.'.join(path)}: {e}")
 
-        hierarchical_storage.traverse_tree(self._OProxies, apply)
+        hierarchical_storage.traverse_tree(self.OProxies.getRaw(), apply)
 
     def _remove(self, path, to_remove=None):
         if to_remove is None:  # Remove container at path
@@ -248,7 +242,7 @@ class opr:
     def _refresh(self):
         """
         Refreshes the proxy tree by syncing OP paths with storage and re-applying extensions.
-        Updates DAT paths in _OProxies if renamed and re-runs _apply_extensions for consistency.
+        Updates DAT paths in OProxies if renamed and re-runs _apply_extensions for consistency.
         """
         def update_paths(node, path):
             proxy = self.get_proxy_by_path('.'.join(path))
@@ -256,9 +250,7 @@ class opr:
                 for name, data in list(node['OPs'].items()):
                     op = data['op']
                     current_path = op.path
-                    if current_path != data.get('initial_path'):
-                        data['initial_path'] = current_path
-                        log(f"Updated path for {name} in {'.'.join(path)}: {current_path}")
+                    log(f"OP {name} in {'.'.join(path)}: {current_path}")
             # Update DAT paths in Extensions
             if 'Extensions' in node:
                 for ext in node['Extensions']:
@@ -269,8 +261,8 @@ class opr:
                             ext['dat_path'] = dat_op.path
                             log(f"Updated DAT path for extension '{ext['name']}' in {'.'.join(path)}: {dat_op.path}")
 
-        # Update paths in detailed storage
-        hierarchical_storage.traverse_tree(self._OProxies, update_paths)
+        # Update paths in storage
+        hierarchical_storage.traverse_tree(self.OProxies.getRaw(), update_paths)
 
         # Re-apply extensions after path updates
         self._apply_extensions()
@@ -280,9 +272,9 @@ class opr:
         Print or return an ASCII-style tree of the proxy structure from the root.
         Args:
             child (str, optional): The child node to start printing from (e.g., 'chops').
-            detail (str): The level of detail ('full', 'minimal', 'dev'); default is 'full'.
+            detail (str): The level of detail ('full', 'minimal'); default is 'full'.
             asDict (bool): If True, return the raw dictionary instead of printing; default is False.
         Returns:
-            str or dict: The formatted tree string or raw storage dicts if asDict=True.
+            str or dict: The formatted tree string or raw storage dict if asDict=True.
         """
         return OPContainer._tree(self, child, detail, asDict)

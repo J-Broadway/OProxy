@@ -99,7 +99,7 @@ class OPContainer(list, OPBaseWrapper):
                 raise RuntimeError(f"Failed to load and attach from DAT {dat.path}: {e}") from e
             
             # Persist extension in storage (serializable)
-            node = hierarchical_storage.get_node(self._opr._OProxies, self._dictPath)
+            node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
             if 'Extensions' not in node:
                 node['Extensions'] = []
             # Check for duplicate and overwrite if exists
@@ -150,10 +150,10 @@ class OPContainer(list, OPBaseWrapper):
         Print or return an ASCII-style tree of the proxy structure.
         Args:
             child (str, optional): The child node to start printing from (e.g., 'chops').
-            detail (str): The level of detail ('full', 'minimal', 'dev'); default is 'full'.
+            detail (str): The level of detail ('full', 'minimal'); default is 'full'.
             asDict (bool): If True, return the raw dictionary instead of printing; default is False.
         Returns:
-            dict or None: Raw storage dicts if asDict=True, otherwise None.
+            dict or None: Raw storage dict if asDict=True, otherwise None.
         """
         # Determine the root opr instance
         opr_instance = self if hasattr(self, 'storage') else getattr(self, '_opr', None)
@@ -161,9 +161,8 @@ class OPContainer(list, OPBaseWrapper):
             log("<OProxy [WARNING]> No storage or parent reference available for tree", level='warning')
             return None if asDict else None
 
-        # Get raw storage dictionaries
+        # Get raw storage dictionary
         oproxies = opr_instance.storage['OProxies'].getRaw()
-        oproxies_detailed = opr_instance.storage['_OProxies'].getRaw()
 
         # Determine starting path
         start_path = []
@@ -174,26 +173,22 @@ class OPContainer(list, OPBaseWrapper):
 
         # Validate starting path
         current_oproxies = oproxies
-        current_oproxies_detailed = oproxies_detailed
         for i, segment in enumerate(start_path):
             if i > 0:
                 current_oproxies = current_oproxies.get('Children', {})
-                current_oproxies_detailed = current_oproxies_detailed.get('Children', {})
-            if segment not in current_oproxies or segment not in current_oproxies_detailed:
+            if segment not in current_oproxies:
                 log(f"<OProxy [WARNING]> Child '{child}' not found in storage at path {'.'.join(start_path[:i+1])}", level='warning')
                 return None if asDict else None
             current_oproxies = current_oproxies[segment]
-            current_oproxies_detailed = current_oproxies_detailed[segment]
 
-        # Return raw dictionaries if asDict=True
+        # Return raw dictionary if asDict=True
         if asDict:
-            return {'OProxies': current_oproxies, '_OProxies': current_oproxies_detailed}
+            return {'OProxies': current_oproxies}
 
         # Build and print the tree
         node_name = start_path[-1] if child else None
         tree_str = format_ascii_tree(
             node_oproxies=current_oproxies,
-            node_oproxies_detailed=current_oproxies_detailed,
             prefix="",
             detail=detail,
             node_name=node_name

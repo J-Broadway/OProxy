@@ -2,6 +2,8 @@
 
 Proxy system for TouchDesigner OPs with hierarchical grouping and persistent, DAT‑driven extensions.
 
+.tox file implementaiton coming soon once core functionality is finished.
+
 ### Why OProxy?
 - **Structure**: Organize operators into named, hierarchical groups you can navigate like attributes (e.g., `opr.chops.filters`), rather than hunting through networks at runtime.
 - **Extensibility**: Attach reusable behaviors as persistent extensions defined in DATs. OProxy extracts classes/functions from DATs (via AST) and binds them to your proxies or proxy items.
@@ -11,9 +13,8 @@ Proxy system for TouchDesigner OPs with hierarchical grouping and persistent, DA
 ### Core Concepts
 - **OP Proxy (item-level)**: A lightweight wrapper around a single `td.OP` that allows custom attributes and methods and can bind persistent behaviors from DATs.
 - **OP Container (group-level)**: A list-like collection of `OP_Proxy` items with a name and an addressable path in the hierarchy. Containers can also receive extensions that apply to the group.
-- **Hierarchical Storage**: Two complementary stores:
-  - `OProxies`: concise, high-level structure (groups, items, children)
-  - `_OProxies`: detailed mapping for persistence (OP names, initial paths, extensions, etc.)
+- **Hierarchical Storage**: Single persistent store:
+  - `OProxies`: detailed structure with OPs, extensions, and children (dict-based OPs with metadata)
 - **Persistent, DAT-driven extensions**: Define a class or function at the top level of a DAT; OProxy extracts and binds it. Extensions can be class-wide (on containers) or per-item (on proxies), and can optionally be instantiated/called with arguments.
 
 ### Features
@@ -21,7 +22,7 @@ Proxy system for TouchDesigner OPs with hierarchical grouping and persistent, DA
 - Add/remove/refresh helpers for OP sets and subtrees
 - Persistent extensions sourced from DATs (class or function) with optional `call` and `args`
 - Auto-refresh of renamed/moved OPs and DATs
-- ASCII tree introspection for quick overviews (`full`, `minimal`, `dev` detail levels)
+- ASCII tree introspection for quick overviews (`full`, `minimal` detail levels)
 - Pythonic access to underlying OPs while enabling custom methods/attributes
 
 ### Requirements

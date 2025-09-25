@@ -78,7 +78,7 @@ class OP_Proxy(OPBaseWrapper):
             
             # Persist extension in storage (serializable)
             if hasattr(self, '_opr') and hasattr(self, '_dictPath'):
-                node = hierarchical_storage.get_node(self._opr._OProxies, self._dictPath)
+                node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
                 if 'Extensions' not in node:
                     node['Extensions'] = []
                 # Check for duplicate and overwrite if exists

@@ -14,18 +14,17 @@ def _update_storage(self):
         return
     dict_path = self._dictPath
     current_ops_list = [w.op for w in self]
-    hierarchical_storage.update_nested(self._opr.OProxies, dict_path, 'OPs', current_ops_list)
     
-    node = hierarchical_storage.get_node(self._opr._OProxies, dict_path)
+    node = hierarchical_storage.get_node(self._opr.OProxies, dict_path)
     if 'OPs' not in node:
         node['OPs'] = {}
     mapping = node['OPs']
     current_ops = set(current_ops_list)
-    # Remove missing from _OProxies
+    # Remove missing from OProxies
     to_del = [k for k, v in list(mapping.items()) if v['op'] not in current_ops]
     for k in to_del:
         del mapping[k]
-    # Add new ones (not in existing _OProxies ops)
+    # Add new ones (not in existing OProxies ops)
     existing_proxied_ops = {v['op'] for v in mapping.values()}
     new_ops = [op for op in current_ops_list if op not in existing_proxied_ops]
     for op in new_ops:
@@ -35,16 +34,15 @@ def _update_storage(self):
             while f"{initial_name}_{i}" in mapping:
                 i += 1
             initial_name = f"{initial_name}_{i}"
-        mapping[initial_name] = {'op': op, 'initial_path': op.path}
+        mapping[initial_name] = {'op': op}
 
-def format_ascii_tree(node_oproxies, node_oproxies_detailed, prefix="", detail='full', node_name=None):
+def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
     """
-    Helper function to format an ASCII-style tree from OProxies and _OProxies data.
+    Helper function to format an ASCII-style tree from OProxies data.
     Args:
         node_oproxies (dict): The OProxies node data (top-level or single node).
-        node_oproxies_detailed (dict): The _OProxies node data (top-level or single node).
         prefix (str): The prefix for indentation.
-        detail (str): The level of detail ('full', 'minimal', 'dev').
+        detail (str): The level of detail ('full', 'minimal').
         node_name (str, optional): The name of the single node when child is specified (e.g., 'chops').
     Returns:
         str: The formatted tree as a string.
@@ -54,137 +52,220 @@ def format_ascii_tree(node_oproxies, node_oproxies_detailed, prefix="", detail='
     # Check if node_oproxies is a single node (e.g., when child='chops' is specified)
     is_single_node = isinstance(node_oproxies, dict) and 'OPs' in node_oproxies and 'Extensions' in node_oproxies and 'Children' in node_oproxies
     
-    if detail == 'minimal':
-        if is_single_node and node_name:
-            tree.append(f"{prefix}{node_name}")
-        else:
-            tree.append(f"{prefix}root")
-            for name in node_oproxies:
-                tree.append(f"{prefix}  ├─ {name}")
-    elif detail == 'full':
-        if is_single_node and node_name:
-            tree.append(f"{prefix}{node_name}")
-            ops = node_oproxies.get('OPs', [])
-            extensions = node_oproxies.get('Extensions', [])
-            children = node_oproxies.get('Children', {})
-            if ops:
-                tree.append(f"{prefix}  ├─ OPs")
-                for op in ops:
-                    tree.append(f"{prefix}  │  ├─ {op}")
-            if extensions:
-                tree.append(f"{prefix}  ├─ Extensions")
-                for ext in extensions:
-                    ext_parts = [f"name: {ext['name']}"]
-                    if ext.get('func'):
-                        ext_parts.append(f"func: {ext['func']}")
-                    if ext.get('cls'):
-                        ext_parts.append(f"cls: {ext['cls']}")
-                    if ext.get('call') is not None:
-                        ext_parts.append(f"call: {ext['call']}")
-                    if ext.get('args'):
-                        ext_parts.append(f"args: {ext['args']}")
-                    tree.append(f"{prefix}  │  ├─ {', '.join(ext_parts)}")
-            if children:
-                tree.append(f"{prefix}  └─ Children: {children}")
-        else:
-            tree.append(f"{prefix}root")
-            for name, data in node_oproxies.items():
-                ops = data.get('OPs', [])
-                extensions = data.get('Extensions', [])
-                children = data.get('Children', {})
-                tree.append(f"{prefix}  ├─ {name}")
-                if ops:
-                    tree.append(f"{prefix}  │  ├─ OPs")
-                    for op in ops:
-                        tree.append(f"{prefix}  │  │  ├─ {op}")
+    def build_tree_with_proper_pipes():
+        """Build the tree with proper pipe handling according to design principle"""
+        result = []
+        
+        def format_sections_with_pipes(node_data, section_prefix, parent_has_more_siblings):
+            """Format the OPs, Extensions, and Children sections with proper pipe handling"""
+            ops = node_data.get('OPs', {})
+            extensions = node_data.get('Extensions', [])
+            children = node_data.get('Children', {})
+            
+            # Determine which sections to show and their order
+            has_ops = ops and detail == 'full'
+            has_extensions = extensions and detail in ['full', 'minimal']
+            has_children = children and detail == 'full'
+            
+            # Determine which sections will be shown
+            sections = []
+            if has_ops:
+                sections.append('ops')
+            if has_extensions:
+                sections.append('extensions')
+            if has_children:
+                sections.append('children')
+            
+            # Build pipe prefix based on whether parent has more siblings
+            pipe_prefix = "│  " if parent_has_more_siblings else "   "
+            
+            # Add OPs section
+            if has_ops:
+                is_last_section = sections[-1] == 'ops'
+                connector = "└─" if is_last_section else "├─"
+                result.append(f"{section_prefix}{pipe_prefix}{connector} <OPs>")
+                
+                op_items = list(ops.items())
+                for i, (op_name, op_data) in enumerate(op_items):
+                    is_last_op = i == len(op_items) - 1
+                    op_connector = "└─" if is_last_op else "├─"
+                    
+                    # Build prefix for OP line
+                    op_prefix = pipe_prefix
+                    if not is_last_section:
+                        op_prefix += "│  "
+                    else:
+                        op_prefix += "   "
+                    
+                    result.append(f"{section_prefix}{op_prefix}{op_connector} {op_name}")
+                    
+                    # OP details
+                    op_detail_prefix = op_prefix
+                    if not is_last_op:
+                        op_detail_prefix += "│  "
+                    else:
+                        op_detail_prefix += "   "
+                    
+                    result.append(f"{section_prefix}{op_detail_prefix}└─ op: type:{op_data['op'].type} path:{op_data['op'].path}")
+            
+            # Add Extensions section
+            if has_extensions:
+                is_last_section = sections[-1] == 'extensions'
+                connector = "└─" if is_last_section else "├─"
+                result.append(f"{section_prefix}{pipe_prefix}{connector} <Extensions>")
+                
                 if extensions:
-                    tree.append(f"{prefix}  │  ├─ Extensions")
-                    for ext in extensions:
-                        ext_parts = [f"name: {ext['name']}"]
-                        if ext.get('func'):
-                            ext_parts.append(f"func: {ext['func']}")
-                        if ext.get('cls'):
-                            ext_parts.append(f"cls: {ext['cls']}")
-                        if ext.get('call') is not None:
-                            ext_parts.append(f"call: {ext['call']}")
-                        if ext.get('args'):
-                            ext_parts.append(f"args: {ext['args']}")
-                        tree.append(f"{prefix}  │  │  ├─ {', '.join(ext_parts)}")
+                    if detail == 'minimal':
+                        for i, ext in enumerate(extensions):
+                            is_last_ext = i == len(extensions) - 1
+                            ext_connector = "└─" if is_last_ext else "├─"
+                            
+                            # Build prefix for extension line
+                            ext_prefix = pipe_prefix
+                            if not is_last_section:
+                                ext_prefix += "│  "
+                            else:
+                                ext_prefix += "   "
+                            
+                            result.append(f"{section_prefix}{ext_prefix}{ext_connector} {ext['name']}")
+                    else:  # full detail
+                        for i, ext in enumerate(extensions):
+                            is_last_ext = i == len(extensions) - 1
+                            ext_connector = "└─" if is_last_ext else "├─"
+                            
+                            # Build prefix for extension line
+                            ext_prefix = pipe_prefix
+                            if not is_last_section:
+                                ext_prefix += "│  "
+                            else:
+                                ext_prefix += "   "
+                            
+                            result.append(f"{section_prefix}{ext_prefix}{ext_connector} {ext['name']}")
+                            
+                            # Extension details
+                            details = []
+                            if ext.get('name') is not None:
+                                details.append(('name', ext['name']))
+                            if ext.get('cls') is not None:
+                                details.append(('cls', ext['cls']))
+                            if ext.get('func') is not None:
+                                details.append(('func', ext['func']))
+                            if ext.get('dat_path') is not None:
+                                details.append(('dat_path', ext['dat_path']))
+                            if ext.get('call') is not None:
+                                details.append(('call', ext['call']))
+                            # Always include args, even if None
+                            details.append(('args', ext.get('args')))
+                            
+                            for j, (key, value) in enumerate(details):
+                                is_last_detail = j == len(details) - 1
+                                detail_connector = "└─" if is_last_detail else "├─"
+                                
+                                # Build prefix for detail line
+                                detail_prefix = ext_prefix
+                                if not is_last_ext:
+                                    detail_prefix += "│  "
+                                else:
+                                    detail_prefix += "   "
+                                
+                                if key == 'args' and isinstance(value, (list, tuple)) and value:
+                                    result.append(f"{section_prefix}{detail_prefix}{detail_connector} {key}:")
+                                    for k, arg in enumerate(value):
+                                        # Args use - instead of └─
+                                        result.append(f"{section_prefix}{detail_prefix}      - {arg}")
+                                else:
+                                    result.append(f"{section_prefix}{detail_prefix}{detail_connector} {key}: {value}")
+                else:
+                    result.append(f"{section_prefix}{pipe_prefix}└─ <Extensions> []")
+            
+            # Add Children section (always last)
+            if has_children:
                 if children:
-                    tree.append(f"{prefix}  │  └─ Children: {children}")
-    else:  # detail == 'dev'
-        tree.append(f"{prefix}root")
-        tree.append(f"{prefix}  ├─ OProxies")
+                    result.append(f"{section_prefix}{pipe_prefix}└─ <Children>")
+                    
+                    child_items = list(children.items())
+                    for i, (child_name, child_data) in enumerate(child_items):
+                        is_last_child = i == len(child_items) - 1
+                        # For nested children, we need to pass the proper ancestor stack
+                        # The parent has more siblings if there are more root containers or [END] coming
+                        child_ancestor_stack = [parent_has_more_siblings]
+                        # Use the section_prefix + additional indentation for nested children
+                        nested_prefix = section_prefix + "  "  # Add 2 spaces for proper indentation under <Children>
+                        format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
+                else:
+                    result.append(f"{section_prefix}{pipe_prefix}└─ <Children> {{}}")
+        
+        def format_node_with_pipes(node_data, node_name, is_root=False, is_last=False, ancestor_stack=[], node_prefix=None):
+            """Format a single node with proper pipe handling"""
+            ops = node_data.get('OPs', {})
+            extensions = node_data.get('Extensions', [])
+            children = node_data.get('Children', {})
+            
+            # Use provided node_prefix or fall back to global prefix
+            current_prefix = node_prefix if node_prefix is not None else prefix
+            
+            # Build the prefix for this line based on ancestor stack
+            line_prefix = ""
+            for i, has_more_siblings in enumerate(ancestor_stack):
+                if has_more_siblings:
+                    line_prefix += "│  "
+                else:
+                    line_prefix += "   "
+            
+            # Add node name with angle brackets
+            if is_root:
+                result.append(f"{current_prefix}<{node_name}>")
+            else:
+                connector = "└─" if is_last else "├─"
+                result.append(f"{current_prefix}{line_prefix}{connector} {node_name}")
+            
+            # Determine which sections to show and their order
+            has_ops = ops and detail == 'full'
+            has_extensions = extensions and detail in ['full', 'minimal']
+            has_children = children and detail == 'full'
+            
+            # Determine which sections will be shown
+            sections = []
+            if has_ops:
+                sections.append('ops')
+            if has_extensions:
+                sections.append('extensions')
+            if has_children:
+                sections.append('children')
+            
+            # Use the shared format_sections_with_pipes function for consistency
+            if not is_root:
+                parent_has_more_siblings = not is_last
+                format_sections_with_pipes(node_data, current_prefix + line_prefix, parent_has_more_siblings)
+        
         if is_single_node and node_name:
-            ops = node_oproxies.get('OPs', [])
-            extensions = node_oproxies.get('Extensions', [])
-            children = node_oproxies.get('Children', {})
-            tree.append(f"{prefix}  │  ├─ {node_name}")
-            if ops:
-                tree.append(f"{prefix}  │  │  ├─ OPs")
-                for op in ops:
-                    tree.append(f"{prefix}  │  │  │  ├─ {op}")
-            if extensions:
-                tree.append(f"{prefix}  │  │  ├─ Extensions: {extensions}")
-            if children:
-                tree.append(f"{prefix}  │  │  └─ Children: {children}")
+            # Single node display
+            format_node_with_pipes(node_oproxies, node_name, is_root=True)
         else:
-            for name, data in node_oproxies.items():
-                ops = data.get('OPs', [])
-                extensions = data.get('Extensions', [])
-                children = data.get('Children', {})
-                tree.append(f"{prefix}  │  ├─ {name}")
-                if ops:
-                    tree.append(f"{prefix}  │  │  ├─ OPs")
-                    for op in ops:
-                        tree.append(f"{prefix}  │  │  │  ├─ {op}")
-                if extensions:
-                    tree.append(f"{prefix}  │  │  ├─ Extensions: {extensions}")
-                if children:
-                    tree.append(f"{prefix}  │  │  └─ Children: {children}")
-        tree.append(f"{prefix}  └─ _OProxies")
-        if is_single_node and node_name:
-            ops = node_oproxies_detailed.get('OPs', {})
-            extensions = node_oproxies_detailed.get('Extensions', [])
-            children = node_oproxies_detailed.get('Children', {})
-            tree.append(f"{prefix}     ├─ {node_name}")
-            if ops:
-                tree.append(f"{prefix}     │  ├─ OPs")
-                for op_name, op_data in ops.items():
-                    tree.append(f"{prefix}     │  │  ├─ {op_name}")
-                    tree.append(f"{prefix}     │  │  │  ├─ op: {op_data['op']}")
-                    tree.append(f"{prefix}     │  │  │  └─ initial_path: {op_data['initial_path']}")
-            if extensions:
-                tree.append(f"{prefix}     │  ├─ Extensions")
-                for i, ext in enumerate(extensions):
-                    ext_str = f"[{i}]"
-                    for key, value in ext.items():
-                        if value is not None:  # Skip None values for cleaner output
-                            ext_str += f"\n{prefix}     │  │     ├─ {key}: {value}"
-                    tree.append(f"{prefix}     │  │  {ext_str}")
-            if children:
-                tree.append(f"{prefix}     │  └─ Children: {children}")
+            # Root display - node_oproxies contains root-level containers
+            result.append(f"{prefix}<root>")
+            container_items = list(node_oproxies.items())
+            for i, (name, data) in enumerate(container_items):
+                is_last_container = i == len(container_items) - 1
+                # Root containers need proper indentation - they should be indented from <root>
+                # All root containers use ├─ because [END] is coming after them
+                connector = "├─"  # Never use └─ for root containers because [END] is coming
+                result.append(f"{prefix}  {connector} {name}")
+                
+                # For children of root containers, always has more siblings because [END] is coming
+                root_has_more_siblings = True  # Always true because [END] is coming
+                format_sections_with_pipes(data, prefix + "  ", root_has_more_siblings)
+        
+        # Add [END] marker with proper pipe handling
+        # The [END] marker should have a pipe if there are root containers
+        if not is_single_node and node_oproxies:
+            result.append(f"{prefix}  └─[END]")
         else:
-            for name, data in node_oproxies_detailed.items():
-                ops = data.get('OPs', {})
-                extensions = data.get('Extensions', [])
-                children = data.get('Children', {})
-                tree.append(f"{prefix}     ├─ {name}")
-                if ops:
-                    tree.append(f"{prefix}     │  ├─ OPs")
-                    for op_name, op_data in ops.items():
-                        tree.append(f"{prefix}     │  │  ├─ {op_name}")
-                        tree.append(f"{prefix}     │  │  │  ├─ op: {op_data['op']}")
-                        tree.append(f"{prefix}     │  │  │  └─ initial_path: {op_data['initial_path']}")
-                if extensions:
-                    tree.append(f"{prefix}     │  ├─ Extensions")
-                    for i, ext in enumerate(extensions):
-                        ext_str = f"[{i}]"
-                        for key, value in ext.items():
-                            if value is not None:  # Skip None values for cleaner output
-                                ext_str += f"\n{prefix}     │  │     ├─ {key}: {value}"
-                        tree.append(f"{prefix}     │  │  {ext_str}")
-                if children:
-                    tree.append(f"{prefix}     │  └─ Children: {children}")
+            result.append(f"{prefix}  └─[END]")
+        
+        return result
+    
+    # Build the tree with proper pipe handling
+    tree = build_tree_with_proper_pipes()
     
     return '\n'.join(tree)

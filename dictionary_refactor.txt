@@ -1,0 +1,171 @@
+# dictionary_refactor.txt
+# OProxy Single Dictionary Refactor Plan
+# Converting from dual storage (OProxies + _OProxies) to single OProxies storage
+
+## PHASE 1: Storage Structure Changes
+
+### 1.1 Update StorageManager initialization
+- File: oproxy.py
+- Change: Remove '_OProxies' from storedItems, keep only 'OProxies'
+- Impact: Single storage item instead of dual
+
+### 1.2 Update storage structure schema
+- File: hierarchical_storage.py
+- Change: Remove is_detailed parameter from init_node()
+- Change: Always use dict-based OPs structure: {'op': td.OP} (no initial_path)
+- Impact: All OPs stored as simple dict with op reference only
+
+### 1.3 Update _add() method storage writes
+- File: oproxy.py
+- Change: Remove dual storage writes, use only single OProxies
+- Change: Update hierarchical_storage.init_node() calls to remove is_detailed
+- Change: Store OPs as {'op': op} instead of {'op': op, 'initial_path': op.path}
+- Impact: Single source of truth with simplified OP storage
+
+## PHASE 2: Core Logic Updates
+
+### 2.1 Update _update_storage() function
+- File: utils.py
+- Change: Remove OProxies list updates, only update detailed OPs dict
+- Change: Update all references from _OProxies to OProxies
+- Change: Store OPs as {'op': op} format
+- Impact: Single storage update path with simplified OP storage
+
+### 2.2 Update _refresh() method
+- File: proxy_methods.py
+- Change: Update all _OProxies references to OProxies
+- Change: Remove initial_path tracking and updates
+- Change: Update extension DAT path tracking to use single storage
+- Impact: Rename detection works on single storage without path tracking
+
+### 2.3 Update _apply_extensions() method
+- File: oproxy.py
+- Change: Update traverse_tree() call to use OProxies instead of _OProxies
+- Impact: Extensions loaded from single storage
+
+### 2.4 Update _remove() method
+- File: proxy_methods.py
+- Change: Update all storage references to use single OProxies
+- Change: Update hierarchical_storage.remove_node() calls
+- Impact: Clean removal from single storage
+
+## PHASE 3: Tree Display Updates
+
+### 3.1 Update format_ascii_tree() function
+- File: utils.py
+- Change: Remove node_oproxies_detailed parameter
+- Change: Update detail levels: remove 'dev', keep 'full' and 'minimal'
+- Change: 'full' becomes the comprehensive view (replaces 'dev')
+- Change: 'minimal' shows hierarchy + extension names only (no extension data)
+- Change: Remove OProxies/_OProxies header structure, show root directly
+- Change: Update OP display to show {'op': op} format without initial_path
+- Change: Update extension display to use extension name as key instead of [#]
+- Change: Add [END] marker at the end of every tree output
+- Change: Wrap descriptor items in angle brackets: <OPs>, <Extensions>, <Children>
+- Change: Use dashes (-) for args list items instead of right angle pipes
+- Change: Wrap root/child names in angle brackets: <root>, <chops>
+- Change: Remove colon when showing empty collections: <Extensions> [] instead of <Extensions>: []
+- Impact: Simplified tree display with improved visual styling
+
+### 3.2 Update _tree() method calls
+- File: OPContainer.py
+- Change: Update format_ascii_tree() calls to pass single storage
+- Change: Update detail parameter validation
+- Change: Remove dual storage access, use single OProxies
+- Impact: Tree display works with single storage
+
+### 3.3 Update opr._tree() method
+- File: oproxy.py
+- Change: Update detail parameter documentation
+- Change: Remove 'dev' from valid options
+- Change: Update storage access to single OProxies
+- Impact: Consistent tree API with single storage
+
+## PHASE 4: Extension System Updates
+
+### 4.1 Update extension storage
+- File: OP_Proxy.py, OPContainer.py
+- Change: Update all _OProxies references to OProxies
+- Change: Update hierarchical_storage.get_node() calls
+- Impact: Extensions stored in single storage
+
+### 4.2 Update flatten_ops() method
+- File: OPContainer.py
+- Change: Update hierarchical_storage.flatten_ops() call to use OProxies
+- Change: Update to handle dict-based OPs: [v['op'] for v in node['OPs'].values()]
+- Impact: OP collection works with single storage
+
+## PHASE 5: Restore Logic Updates
+
+### 5.1 Update restore from storage
+- File: oproxy.py
+- Change: Update restore logic to read from single OProxies structure
+- Change: Handle dict-based OPs: [data['op'] for data in node['OPs'].values()]
+- Impact: Clean restore from single storage
+
+### 5.2 Update _restore_children() method
+- File: oproxy.py
+- Change: Update to work with single storage structure
+- Change: Handle dict-based OPs in children
+- Impact: Hierarchical restore works correctly
+
+## PHASE 6: Cleanup and Validation
+
+### 6.1 Remove unused code
+- Files: All
+- Change: Remove any remaining _OProxies references
+- Change: Remove is_detailed parameter usage
+- Change: Remove initial_path tracking code
+- Impact: Clean codebase
+
+### 6.2 Update documentation
+- Files: README.md, example_tree_structure.txt
+- Change: Update storage description to single dictionary
+- Change: Update tree detail levels documentation
+- Change: Remove initial_path references
+- Change: Update tree examples to show new format with angle brackets, dashes, and no colons for empty collections
+- Impact: Accurate documentation
+
+### 6.3 Test tree functionality
+- Verify format_ascii_tree() works with single storage
+- Verify all detail levels display correctly
+- Verify child parameter works correctly
+- Verify no OProxies/_OProxies headers in output
+- Verify extension names used as keys instead of [#]
+- Verify [END] marker appears at end of all trees
+- Verify angle brackets around descriptors and root/child names
+- Verify dashes used for args list items
+- Verify no colons for empty collections: <Extensions> [] not <Extensions>: []
+- Impact: Tree display maintains functionality with improved styling
+
+## CRITICAL CONSIDERATIONS
+
+### Tree Display Behavior
+- 'full' mode: Shows complete OPs with op details, extensions with full metadata using extension names as keys
+- 'minimal' mode: Shows hierarchy structure + extension names only (no extension data)
+- Child parameter: Works with both detail levels
+- ASCII formatting: Improved visual styling with angle brackets, dashes, and clean empty collection display
+- No initial_path display anywhere
+- [END] marker at end of every tree output
+- Extension display uses actual extension names instead of [#] indices
+- Descriptor items wrapped in angle brackets: <OPs>, <Extensions>, <Children>
+- Root/child names wrapped in angle brackets: <root>, <chops>
+- Args list items use dashes (-) instead of right angle pipes
+- Empty collections display without colons: <Extensions> [] not <Extensions>: []
+
+### Storage Migration
+- Existing projects: Clean break (recreation required)
+- New structure: All data in single OProxies with simplified OP format
+- Backward compatibility: None (clean break)
+
+### Testing Requirements
+- Verify all tree display modes work correctly
+- Verify extension system works with single storage
+- Verify rename detection works correctly (without path tracking)
+- Verify restore functionality works correctly
+- Verify no initial_path references remain
+- Verify extension names display correctly in tree
+- Verify [END] marker appears in all tree outputs
+- Verify angle bracket formatting for descriptors and names
+- Verify dash formatting for args lists
+- Verify no colons for empty collections
