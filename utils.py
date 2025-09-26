@@ -1,3 +1,4 @@
+# utils.dat
 hierarchical_storage    = mod('hierarchical_storage')
 
 # Enhanced logging with levels (info, warning, error)
@@ -62,12 +63,12 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
             extensions = node_data.get('Extensions', [])
             children = node_data.get('Children', {})
             
-            # Determine which sections to show and their order
-            has_ops = ops and detail == 'full'
-            has_extensions = extensions and detail in ['full', 'minimal']
-            has_children = children and detail == 'full'
+            # Always show sections based on detail level, even if empty
+            has_ops = detail == 'full'
+            has_extensions = detail in ['full', 'minimal']
+            has_children = detail == 'full'
             
-            # Determine which sections will be shown
+            # Determine which sections to show and their order
             sections = []
             if has_ops:
                 sections.append('ops')
@@ -83,37 +84,36 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
             if has_ops:
                 is_last_section = sections[-1] == 'ops'
                 connector = "└─" if is_last_section else "├─"
-                result.append(f"{section_prefix}{pipe_prefix}{connector} <OPs>")
-                
-                op_items = list(ops.items())
-                for i, (op_name, op_data) in enumerate(op_items):
-                    is_last_op = i == len(op_items) - 1
-                    op_connector = "└─" if is_last_op else "├─"
-                    
-                    # Build prefix for OP line
-                    op_prefix = pipe_prefix
-                    if not is_last_section:
-                        op_prefix += "│  "
-                    else:
-                        op_prefix += "   "
-                    
-                    result.append(f"{section_prefix}{op_prefix}{op_connector} {op_name}")
-                    
-                    # OP details
-                    op_detail_prefix = op_prefix
-                    if not is_last_op:
-                        op_detail_prefix += "│  "
-                    else:
-                        op_detail_prefix += "   "
-                    
-                    result.append(f"{section_prefix}{op_detail_prefix}└─ op: type:{op_data['op'].type} path:{op_data['op'].path}")
+                result.append(f"{section_prefix}{pipe_prefix}{connector} <OPs>" + (" []" if not ops else ""))
+                if ops:
+                    op_items = list(ops.items())
+                    for i, (op_name, op_data) in enumerate(op_items):
+                        is_last_op = i == len(op_items) - 1
+                        op_connector = "└─" if is_last_op else "├─"
+                        
+                        # Build prefix for OP line
+                        op_prefix = pipe_prefix
+                        if not is_last_section:
+                            op_prefix += "│  "
+                        else:
+                            op_prefix += "   "
+                        
+                        result.append(f"{section_prefix}{op_prefix}{op_connector} {op_name}")
+                        
+                        # OP details
+                        op_detail_prefix = op_prefix
+                        if not is_last_op:
+                            op_detail_prefix += "│  "
+                        else:
+                            op_detail_prefix += "   "
+                        
+                        result.append(f"{section_prefix}{op_detail_prefix}└─ op: type:{op_data['op'].type} path:{op_data['op'].path}")
             
             # Add Extensions section
             if has_extensions:
                 is_last_section = sections[-1] == 'extensions'
                 connector = "└─" if is_last_section else "├─"
-                result.append(f"{section_prefix}{pipe_prefix}{connector} <Extensions>")
-                
+                result.append(f"{section_prefix}{pipe_prefix}{connector} <Extensions>" + (" []" if not extensions else ""))
                 if extensions:
                     if detail == 'minimal':
                         for i, ext in enumerate(extensions):
@@ -175,26 +175,18 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                                         result.append(f"{section_prefix}{detail_prefix}      - {arg}")
                                 else:
                                     result.append(f"{section_prefix}{detail_prefix}{detail_connector} {key}: {value}")
-                else:
-                    result.append(f"{section_prefix}{pipe_prefix}└─ <Extensions> []")
             
             # Add Children section (always last)
             if has_children:
+                connector = "└─"  # Always last section
+                result.append(f"{section_prefix}{pipe_prefix}{connector} <Children>" + (" []" if not children else ""))
                 if children:
-                    result.append(f"{section_prefix}{pipe_prefix}└─ <Children>")
-                    
                     child_items = list(children.items())
                     for i, (child_name, child_data) in enumerate(child_items):
                         is_last_child = i == len(child_items) - 1
-                        # For nested children, we need to pass the proper ancestor stack
-                        # The parent has more siblings if there are more root containers or [END] coming
-                        child_ancestor_stack = [parent_has_more_siblings]
-                        # Use the section_prefix + pipe_prefix + additional indentation for nested children
-                        # This ensures proper indentation under <Children>
-                        nested_prefix = section_prefix + pipe_prefix + "  "  # Add 2 spaces for proper indentation under <Children>
+                        child_ancestor_stack = []  # Empty to avoid extra pipes
+                        nested_prefix = section_prefix + pipe_prefix + "   "  # 3 spaces for correct indentation
                         format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
-                else:
-                    result.append(f"{section_prefix}{pipe_prefix}└─ <Children> {{}}")
         
         def format_node_with_pipes(node_data, node_name, is_root=False, is_last=False, ancestor_stack=[], node_prefix=None):
             """Format a single node with proper pipe handling"""
@@ -220,28 +212,16 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                 connector = "└─" if is_last else "├─"
                 result.append(f"{current_prefix}{line_prefix}{connector} {node_name}")
             
-            # Determine which sections to show and their order
-            has_ops = ops and detail == 'full'
-            has_extensions = extensions and detail in ['full', 'minimal']
-            has_children = children and detail == 'full'
-            
-            # Determine which sections will be shown
-            sections = []
-            if has_ops:
-                sections.append('ops')
-            if has_extensions:
-                sections.append('extensions')
-            if has_children:
-                sections.append('children')
-            
             # Use the shared format_sections_with_pipes function for consistency
             if not is_root:
                 parent_has_more_siblings = not is_last
                 format_sections_with_pipes(node_data, current_prefix + line_prefix, parent_has_more_siblings)
         
         if is_single_node and node_name:
-            # Single node display
-            format_node_with_pipes(node_oproxies, node_name, is_root=True)
+            # Single node display (no < > around name, add sections separately)
+            result.append(f"{prefix}{node_name}")
+            # Add sections with indentation
+            format_sections_with_pipes(node_oproxies, prefix + "  ", True)  # True for [END] following
         else:
             # Root display - node_oproxies contains root-level containers
             result.append(f"{prefix}<root>")
@@ -258,7 +238,6 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                 format_sections_with_pipes(data, prefix + "  ", root_has_more_siblings)
         
         # Add [END] marker with proper pipe handling
-        # The [END] marker should have a pipe if there are root containers
         if not is_single_node and node_oproxies:
             result.append(f"{prefix}  └─[END]")
         else:
