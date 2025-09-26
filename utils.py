@@ -64,7 +64,7 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
             children = node_data.get('Children', {})
             
             # Always show sections based on detail level, even if empty
-            has_ops = detail == 'full'
+            has_ops = detail in ['full', 'minimal']
             has_extensions = detail in ['full', 'minimal']
             has_children = detail in ['full', 'minimal']
             
@@ -100,14 +100,15 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                         
                         result.append(f"{section_prefix}{op_prefix}{op_connector} {op_name}")
                         
-                        # OP details
-                        op_detail_prefix = op_prefix
-                        if not is_last_op:
-                            op_detail_prefix += "│  "
-                        else:
-                            op_detail_prefix += "   "
-                        
-                        result.append(f"{section_prefix}{op_detail_prefix}└─ op: type:{op_data['op'].type} path:{op_data['op'].path}")
+                        # OP details - only show in full detail mode
+                        if detail == 'full':
+                            op_detail_prefix = op_prefix
+                            if not is_last_op:
+                                op_detail_prefix += "│  "
+                            else:
+                                op_detail_prefix += "   "
+                            
+                            result.append(f"{section_prefix}{op_detail_prefix}└─ op: type:{op_data['op'].type} path:{op_data['op'].path}")
             
             # Add Extensions section
             if has_extensions:
