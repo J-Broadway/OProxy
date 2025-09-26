@@ -50,12 +50,61 @@ def proxy_add(self, new_op):
 # Define the Remove method for dynamic classes (updated for wrapped)
 def proxy_remove(self, to_remove=None):
     if to_remove is None:  # Remove self (container) and children recursively
-        # Recurse to remove children first
+        # Check if this is a single OP hybrid container (created via __call__)
+        if hasattr(self, '_opr') and hasattr(self, '_dictPath') and len(self) == 1:
+            # This is a single OP hybrid container - remove the specific OP from its parent
+            # Access the wrapped OP directly from the list to avoid __getitem__ recursion
+            wrapped_op = list.__getitem__(self, 0)
+            op_to_remove = wrapped_op.op
+            parent_path, op_name = self._dictPath.rsplit('.', 1) if '.' in self._dictPath else (None, self._dictPath)
+            
+            if parent_path:
+                # Get the parent container instance
+                parent_container = self._opr.get_proxy_by_path(parent_path)
+                if parent_container:
+                    # Remove from parent's actual list and lookup
+                    wrapped_to_remove = None
+                    for wrapped in parent_container:
+                        if wrapped.op == op_to_remove:
+                            wrapped_to_remove = wrapped
+                            break
+                    
+                    if wrapped_to_remove:
+                        parent_container.remove(wrapped_to_remove)
+                        # Clean up lookup
+                        parent_container._by_name_or_path.pop(op_to_remove.name, None)
+                        parent_container._by_name_or_path.pop(op_to_remove.path, None)
+                        log(f"Removed OP '{op_name}' from parent container")
+                        
+                        # Update storage
+                        _update_storage(parent_container)
+                    else:
+                        log(f"OP '{op_name}' not found in parent container", level='warning')
+                else:
+                    log(f"Parent container not found for path '{parent_path}'", level='warning')
+                
+                # Also remove from storage
+                parent_node = hierarchical_storage.get_node(self._opr.OProxies, parent_path)
+                if 'OPs' in parent_node and op_name in parent_node['OPs']:
+                    del parent_node['OPs'][op_name]
+            else:
+                # Root level removal
+                oproxies_raw = self._opr.OProxies.getRaw()
+                if op_name in oproxies_raw:
+                    del oproxies_raw[op_name]
+                    log(f"Removed root OP '{op_name}'")
+                else:
+                    log(f"Root OP '{op_name}' not found", level='warning')
+            
+            return self  # Return self for chaining
+        
+        # Regular container removal - recurse to remove children first
         node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
-        for child_name in list(node['Children']):
-            child_proxy = getattr(self, child_name, None)
-            if child_proxy:
-                child_proxy._remove()  # Recursive call
+        if 'Children' in node:
+            for child_name in list(node['Children']):
+                child_proxy = getattr(self, child_name, None)
+                if child_proxy:
+                    child_proxy._remove()  # Recursive call
         
         # Remove self from parent
         if hasattr(self, '_opr') and hasattr(self, '_dictPath'):

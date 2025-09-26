@@ -10,6 +10,9 @@ log = mod('utils').log
 class OP_Proxy(OPBaseWrapper):
     """ 
     Wrapper for individual OPs, allowing per-item and all-items extensions.
+    
+    DEPRECATED: This class is being phased out in favor of hybrid OPContainer
+    that can function as both proxy and container. Use OPContainer instead.
     """
     def __init__(self, op):
         self._op = op  # The wrapped TD OP

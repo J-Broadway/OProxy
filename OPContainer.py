@@ -7,13 +7,20 @@ OP_Proxy                = mod('OP_Proxy').OP_Proxy
 hierarchical_storage    = mod('hierarchical_storage')
 log                     = mod('utils').log  # Added for warnings
 proxy_remove            = mod('proxy_methods').proxy_remove
+proxy_refresh           = mod('proxy_methods').proxy_refresh
 format_ascii_tree       = mod('utils').format_ascii_tree  # Import ASCII formatting helper
 
 class OPContainer(list, OPBaseWrapper):
     """
     Base class for OP groups. Now uses OP_Proxy for individuals.
     """
-    def __init__(self, ops):
+    def __init__(self, ops=None):
+        # Handle empty initialization for hybrid containers
+        if ops is None:
+            ops = []
+        elif not isinstance(ops, list):
+            ops = [ops]  # Normalize single OP to list
+        
         super().__init__([OP_Proxy(o) for o in ops])  # Wrap each OP on init
         self._by_name_or_path = {}
         self._parent = None  # Set during creation in oproxy for removal back-ref
@@ -23,15 +30,27 @@ class OPContainer(list, OPBaseWrapper):
             self._by_name_or_path[op.path] = wrapped
     
     def __call__(self, identifier):
-        """Return wrapped OP by name or path."""
-        return self._by_name_or_path.get(identifier)
+        """Return wrapped OP by name or path as a hybrid container."""
+        wrapped_op = self._by_name_or_path.get(identifier)
+        if wrapped_op is None:
+            return None
+        
+        # Create a hybrid container with the single OP
+        hybrid_container = OPContainer([wrapped_op.op])
+        
+        # Copy essential attributes for persistence
+        if hasattr(self, '_opr'):
+            hybrid_container._opr = self._opr
+        if hasattr(self, '_dictPath'):
+            # Create a path for the individual OP
+            op_name = wrapped_op.op.name
+            hybrid_container._dictPath = f"{self._dictPath}.{op_name}"
+        
+        return hybrid_container
     
     def cls(self):
         """Return the class type for extension."""
         return type(self)
-    
-    def __repr__(self):
-        return f"{type(self).__name__}({[w.op for w in self]})" 
     
     def __getattr__(self, name):
         # Check if the attribute exists on the container itself (e.g., extensions)
@@ -41,8 +60,103 @@ class OPContainer(list, OPBaseWrapper):
             if hasattr(attr, '__get__'):
                 return attr.__get__(self, type(self))
             return attr  # Otherwise, return the attribute directly
-        # Delegate to child OPs for group operations
-        return [getattr(w, name) for w in self]
+        
+        # Check for child containers in storage first
+        if hasattr(self, '_opr') and hasattr(self, '_dictPath'):
+            node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
+            if 'Children' in node and name in node['Children']:
+                # Child container exists, create and return it
+                child_data = node['Children'][name]
+                child_ops = [op_data['op'] for op_data in child_data.get('OPs', {}).values()]
+                
+                # Create child container with proper methods
+                class_dict = {
+                    '_add': lambda self, name, op, restore=True: self._opr._add(name, op, parent=self, restore=restore),
+                    '_remove': proxy_remove,
+                    '_refresh': proxy_refresh
+                }
+                ChildContainerClass = type(name, (OPContainer,), class_dict)
+                child_container = ChildContainerClass(child_ops)
+                child_container._opr = self._opr
+                child_container._parent = self
+                child_container._proxy_name = name
+                child_container._dictPath = f"{self._dictPath}.{name}"
+                
+                # Restore any child containers recursively
+                if 'Children' in child_data:
+                    self._opr._restore_children(child_container, child_data['Children'])
+                
+                return child_container
+        
+        # Context-aware delegation based on container size
+        if len(self) == 1:
+            # Single OP - proxy behavior
+            if hasattr(self[0].op, name):
+                return getattr(self[0].op, name)
+            # Fall back to OP_Proxy behavior
+            return getattr(self[0], name)
+        else:
+            # Multiple OPs or empty - container behavior
+            # Check if any wrapped OP has the attribute before trying to access it
+            results = []
+            for w in self:
+                if hasattr(w, name):
+                    results.append(getattr(w, name))
+                elif hasattr(w.op, name):
+                    results.append(getattr(w.op, name))
+                else:
+                    # If no OP has the attribute, raise AttributeError
+                    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+            return results
+    
+    def __setattr__(self, name, value):
+        if name.startswith('_'):  # Internal attrs
+            super().__setattr__(name, value)
+        elif len(self) == 1:
+            # Single OP - proxy behavior
+            if hasattr(self[0].op, name):
+                setattr(self[0].op, name, value)
+            else:
+                # Fall back to OP_Proxy behavior
+                setattr(self[0], name, value)
+        else:
+            # Multiple OPs or empty - container behavior
+            for w in self:
+                if hasattr(w, name):
+                    setattr(w, name, value)
+    
+    def __getitem__(self, key):
+        if len(self) == 1:
+            # Single OP - proxy behavior
+            return self[0].op[key]
+        else:
+            # Multiple OPs or empty - container behavior
+            return [w[key] for w in self]
+    
+    def __setitem__(self, key, value):
+        if len(self) == 1:
+            # Single OP - proxy behavior
+            self[0].op[key] = value
+        else:
+            # Multiple OPs or empty - container behavior
+            for w in self:
+                w[key] = value
+    
+    def __str__(self):
+        if len(self) == 1:
+            # Single OP - proxy behavior
+            return str(self[0].op)
+        else:
+            # Multiple OPs or empty - container behavior
+            return f"{type(self).__name__}({[w.op for w in self]})"
+    
+    def __repr__(self):
+        if len(self) == 1:
+            # Single OP - proxy behavior
+            return repr(self[0].op)
+        else:
+            # Multiple OPs or empty - container behavior
+            return f"{type(self).__name__}({[w.op for w in self]})"
     
     def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False):
         """
@@ -68,8 +182,8 @@ class OPContainer(list, OPBaseWrapper):
                     if isinstance(args, tuple) and len(args) == 1 and not isinstance(args[0], (tuple, list)):
                         args = (args[0],)  # Normalize single-element tuple to ensure proper unpacking
                 if call:
-                    result = obj(*args) if args else obj()
                     if isinstance(obj, type):  # Class instantiation
+                        result = obj(*args) if args else obj()
                         # Use a descriptor to delegate attribute access to the instance
                         class InstanceDelegate:
                             def __init__(self, instance):
@@ -91,33 +205,44 @@ class OPContainer(list, OPBaseWrapper):
                         # Store the instance for attribute access
                         setattr(type(self), attr_name, InstanceDelegate(result))
                     else:
-                        # For callable results (functions), bind as method
-                        setattr(type(self), attr_name, types.MethodType(result, self))
+                        # Function call - bind the function as a method and call it
+                        bound_method = types.MethodType(obj, self)
+                        result = bound_method(*args) if args else bound_method()
+                        # Store the result as a method that returns the result
+                        def method_wrapper(*method_args, **method_kwargs):
+                            return result
+                        setattr(type(self), attr_name, method_wrapper)
                 else:
                     setattr(type(self), attr_name, obj)  # Attach class type or function
             except Exception as e:
                 raise RuntimeError(f"Failed to load and attach from DAT {dat.path}: {e}") from e
             
             # Persist extension in storage (serializable)
-            node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
-            if 'Extensions' not in node:
-                node['Extensions'] = []
-            # Check for duplicate and overwrite if exists
-            existing_ext = next((ext for ext in node['Extensions'] if ext['name'] == attr_name), None)
-            if existing_ext:
-                log(f"Extension '{attr_name}' has been overwritten")
-                node['Extensions'].remove(existing_ext)
-            node['Extensions'].append({
-                'name': attr_name,
-                'cls': cls,
-                'func': func,
-                'dat_path': dat.path,
-                'call': call,
-                'args': args
-            })
+            if hasattr(self, '_opr') and hasattr(self, '_dictPath'):
+                node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
+                if 'Extensions' not in node:
+                    node['Extensions'] = []
+                # Check for duplicate and overwrite if exists
+                existing_ext = next((ext for ext in node['Extensions'] if ext['name'] == attr_name), None)
+                if existing_ext:
+                    log(f"Extension '{attr_name}' has been overwritten")
+                    node['Extensions'].remove(existing_ext)
+                node['Extensions'].append({
+                    'name': attr_name,
+                    'cls': cls,
+                    'func': func,
+                    'dat_path': dat.path,
+                    'call': call,
+                    'args': args
+                })
+            else:
+                # Non-persistent: attach directly, skip storage
+                log(f"Non-persistent extension '{attr_name}' added; won't survive project reload or extension re-init\n"
+                    "Highly Recommended: Adding 'dat=me' for extension persistence.")
+                setattr(type(self), attr_name, cls or func)  # Use cls/func directly if no dat
         else:
             # Non-persistent: attach directly, skip storage
-            log(f"Non-persistent extension '{attr_name}' added to {self._dictPath}; won't survive project reload or extension re-init\n"
+            log(f"Non-persistent extension '{attr_name}' added; won't survive project reload or extension re-init\n"
                 "Highly Recommended: Adding 'dat=me' for extension persistence.")
             setattr(type(self), attr_name, cls or func)  # Use cls/func directly if no dat
         

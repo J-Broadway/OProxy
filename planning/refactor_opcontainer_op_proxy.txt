@@ -1,0 +1,360 @@
+# Refactor_OPContainer_OP_Proxy.txt CURRENTLY TESTING
+
+## OVERVIEW
+This document outlines the refactoring plan to transform OProxy into a true dynamic metaprogrammatic proxy system for TouchDesigner by implementing a hybrid Proxy-Container design pattern. The goal is to enable `opr.Test('moviefile1')` to simultaneously function as both an OP_Proxy (for single OP access) and an OPContainer (for managing child OPs).
+
+## CURRENT ARCHITECTURE ANALYSIS
+
+### Current State
+- **OP_Proxy**: Wraps individual TouchDesigner OPs, inherits from OPBaseWrapper
+- **OPContainer**: Manages collections of OP_Proxy instances, inherits from `list` and OPBaseWrapper
+- **opr**: Root class that creates dynamic OPContainer subclasses via metaprogramming
+- **Storage**: Hierarchical storage system with OPs, Extensions, and Children nodes
+
+### Current Limitations
+1. `opr.Test('moviefile1')` returns OP_Proxy, not OPContainer
+2. OP_Proxy cannot contain child OPs
+3. No context-aware delegation between proxy and container behavior
+4. Extensions on individual proxies don't persist properly
+
+## TARGET ARCHITECTURE
+
+### Core Design Pattern: Hybrid Proxy-Container
+- **Single Object Type**: OPContainer that can contain 0, 1, or multiple OPs
+- **Context-Aware Behavior**: Automatically switches between proxy and container modes
+- **Unified Interface**: Same object can be accessed as both proxy and container
+
+### Behavioral Rules
+- **len(self) == 0**: Empty container behavior
+- **len(self) == 1**: Proxy behavior (delegates to single OP)
+- **len(self) > 1**: Container behavior (manages multiple OPs)
+
+## IMPLEMENTATION PLAN
+
+### Phase 1: Core OPContainer Refactoring
+
+#### 1.1 Modify OPContainer.__getattr__()
+**File**: `OPContainer.py`
+**Current**: Delegates all attributes to child OPs
+**New**: Context-aware delegation
+
+```python
+def __getattr__(self, name):
+    # Check for container-level attributes first
+    if hasattr(self.__class__, name):
+        attr = getattr(self.__class__, name)
+        if hasattr(attr, '__get__'):
+            return attr.__get__(self, type(self))
+        return attr
+    
+    # Context-aware delegation based on container size
+    if len(self) == 1:
+        # Single OP - proxy behavior
+        if hasattr(self[0].op, name):
+            return getattr(self[0].op, name)
+        # Fall back to OP_Proxy behavior
+        return getattr(self[0], name)
+    else:
+        # Multiple OPs - container behavior
+        return [getattr(w, name) for w in self]
+```
+
+#### 1.2 Add Proxy Delegation Methods
+**File**: `OPContainer.py`
+**New Methods**:
+- `__setattr__()` - Handle single OP property setting
+- `__getitem__()` - Delegate to single OP when applicable
+- `__setitem__()` - Delegate to single OP when applicable
+- `__str__()` - Return single OP string representation
+- `__repr__()` - Return single OP representation
+
+#### 1.3 Modify OPContainer.__init__()
+**File**: `OPContainer.py`
+**Changes**:
+- Handle empty initialization (no OPs)
+- Ensure proper OP_Proxy wrapping
+- Set up context-aware behavior flags
+
+### Phase 2: opr Class Modifications
+
+#### 2.1 Modify opr._add() Method
+**File**: `oproxy.py`
+**Current**: Always creates OPContainer
+**New**: Create OPContainer that can handle single OPs
+
+**Key Changes**:
+- Remove OP_Proxy creation in favor of single-item OPContainer
+- Ensure `_dictPath` is always set for persistence
+- Update dynamic class creation to support hybrid behavior
+
+#### 2.2 Update opr.get_proxy_by_path()
+**File**: `oproxy.py`
+**Changes**:
+- Ensure returned objects are always OPContainer instances
+- Handle single-item containers as proxy-like objects
+
+### Phase 3: Storage System Integration
+
+#### 3.1 Update Hierarchical Storage
+**File**: `hierarchical_storage.py`
+**Changes**:
+- Ensure single-item containers are properly stored
+- Update node creation to handle empty containers
+- Modify traversal functions to work with hybrid objects
+
+#### 3.2 Fix Extension Persistence
+**File**: `OPContainer.py` and `oproxy.py`
+**Changes**:
+- Ensure all OPContainer instances have `_opr` and `_dictPath`
+- Update `_extend()` method to work with single-item containers
+- Fix extension application in `_apply_extensions()`
+
+### Phase 4: Proxy Methods Updates
+
+#### 4.1 Update proxy_methods.py
+**File**: `proxy_methods.py`
+**Changes**:
+- Modify `proxy_add()` to work with hybrid containers
+- Update `proxy_remove()` to handle single-item removal
+- Ensure `proxy_refresh()` works with context-aware behavior
+
+#### 4.2 Update OP_Proxy.py
+**File**: `OP_Proxy.py`
+**Changes**:
+- Mark as deprecated (will be replaced by single-item OPContainer)
+- Add migration warnings
+- Ensure compatibility during transition
+
+### Phase 5: Utility Functions Updates
+
+#### 5.1 Update utils.py
+**File**: `utils.py`
+**Changes**:
+- Modify `_update_storage()` to handle hybrid containers
+- Update `format_ascii_tree()` to display single-item containers correctly
+- Ensure logging works with new architecture
+
+#### 5.2 Update ast_mod.py
+**File**: `ast_mod.py`
+**Changes**:
+- Ensure compatibility with hybrid containers
+- Update error handling for new context
+
+## AFFECTED FILES AND MODIFICATIONS
+
+### Primary Files (Major Changes)
+1. **OPContainer.py** - Core hybrid behavior implementation
+2. **oproxy.py** - Root class and factory methods
+3. **hierarchical_storage.py** - Storage system updates
+4. **proxy_methods.py** - Container management methods
+
+### Secondary Files (Minor Changes)
+1. **utils.py** - Utility function updates
+2. **ast_mod.py** - Extension system compatibility
+3. **OP_Proxy.py** - Deprecation and compatibility
+
+### Files Requiring No Changes
+1. **OPBaseWrapper.py** - Abstract base class remains unchanged
+2. **README.md** - Documentation updates needed
+
+## STORAGE SYSTEM IMPACT
+
+### Current Storage Structure
+```python
+{
+    'Test': {
+        'OPs': {'moviefile1': {'op': op_object}},
+        'Extensions': [...],
+        'Children': {...}
+    }
+}
+```
+
+### New Storage Structure
+```python
+{
+    'Test': {
+        'OPs': {'moviefile1': {'op': op_object}},
+        'Extensions': [...],
+        'Children': {
+            'another': {
+                'OPs': {'moviefile3': {'op': op_object}, 'moviefile4': {'op': op_object}},
+                'Extensions': [...],
+                'Children': {}
+            }
+        }
+    }
+}
+```
+
+### Storage Changes Required
+1. **Node Creation**: Support empty containers
+2. **Path Resolution**: Handle single-item container paths
+3. **Extension Storage**: Ensure single-item containers can store extensions
+4. **Traversal**: Update tree traversal for hybrid objects
+
+## API COMPATIBILITY
+
+### New Capabilities
+```python
+# Create container with single OP
+opr._add('Test', ['moviefile1'])
+
+# Access as proxy
+opr.Test('moviefile1').par.width = 1920
+opr.Test('moviefile1').path
+
+# Access as container
+opr.Test('moviefile1')._extend('another', ['moviefile3', 'moviefile4'])
+for i in opr.Test('moviefile1').another:
+    print(i.path)
+
+# Mixed usage
+opr.Test('moviefile1').par.width = 1920  # Proxy behavior
+opr.Test('moviefile1')._add('more', ['moviefile5'])  # Container behavior
+```
+
+### Backward Compatibility
+- Existing code using OPContainer continues to work
+- Existing code using OP_Proxy needs migration
+- Extension system remains compatible
+- Storage format remains compatible
+
+# Example Tree Structures with Hybrid Implementation
+```
+# Create the hybrid structure
+opr._add('Test', ['moviefile1', 'moviefile2'])
+opr.Test('moviefile1')._extend('another', ['moviefile3', 'moviefile4'])
+opr.Test('moviefile1')._extend('tools', func='FilterTools', dat=op('EXT_FilterTools'), call=True)
+opr.Test('moviefile2')._extend('effects', ['blur1', 'level1'])
+opr.Test('moviefile2').effects._extend('advanced', ['edge1', 'glow1'])
+```
+
+```
+# Minimal Detail (detail='minimal')
+<root>
+  ├─ Test
+  │  ├─ <OPs>
+  │  │  ├─ moviefile1
+  │  │  └─ moviefile2
+  │  ├─ <Extensions> []
+  │  └─ <Children> []
+  └─[END]
+  ```
+```
+# Note: With the new hybrid implementation, opr.Test('moviefile1') would return a single-item container, so the tree structure would show:
+<root>
+  ├─ Test
+  │  ├─ <OPs>
+  │  │  ├─ moviefile1
+  │  │  └─ moviefile2
+  │  ├─ <Extensions> []
+  │  └─ <Children>
+  │     ├─ another
+  │     │  ├─ <OPs>
+  │     │  │  ├─ moviefile3
+  │     │  │  └─ moviefile4
+  │     │  ├─ <Extensions> []
+  │     │  └─ <Children> []
+  │     └─ effects
+  │        ├─ <OPs>
+  │        │  ├─ blur1
+  │        │  └─ level1
+  │        ├─ <Extensions> []
+  │        └─ <Children>
+  │           └─ advanced
+  │              ├─ <OPs>
+  │              │  ├─ edge1
+  │              │  └─ glow1
+  │              ├─ <Extensions> []
+  │              └─ <Children> []
+  └─[END]
+```
+
+```
+# Full Detail (detail='full')
+<root>
+  ├─ Test
+  │  ├─ <OPs>
+  │  │  ├─ moviefile1
+  │  │  │  └─ op: type:moviefilein path:/project1/moviefilein1
+  │  │  └─ moviefile2
+  │  │     └─ op: type:moviefilein path:/project1/moviefilein2
+  │  ├─ <Extensions> []
+  │  └─ <Children>
+  │     ├─ another
+  │     │  ├─ <OPs>
+  │     │  │  ├─ moviefile3
+  │     │  │  │  └─ op: type:moviefilein path:/project1/moviefilein3
+  │     │  │  └─ moviefile4
+  │     │  │     └─ op: type:moviefilein path:/project1/moviefilein4
+  │     │  ├─ <Extensions> []
+  │     │  └─ <Children> []
+  │     └─ effects
+  │        ├─ <OPs>
+  │        │  ├─ blur1
+  │        │  │  └─ op: type:blur path:/project1/blur1
+  │        │  └─ level1
+  │        │     └─ op: type:level path:/project1/level1
+  │        ├─ <Extensions> []
+  │        └─ <Children>
+  │           └─ advanced
+  │              ├─ <OPs>
+  │              │  ├─ edge1
+  │              │  │  └─ op: type:edge path:/project1/edge1
+  │              │  └─ glow1
+  │              │     └─ op: type:glow path:/project1/glow1
+  │              ├─ <Extensions> []
+  │              └─ <Children> []
+  └─[END]
+  ```
+```
+  # With Extensions (Full Detail)
+  <root>
+  ├─ Test
+  │  ├─ <OPs>
+  │  │  ├─ moviefile1
+  │  │  │  └─ op: type:moviefilein path:/project1/moviefilein1
+  │  │  └─ moviefile2
+  │  │     └─ op: type:moviefilein path:/project1/moviefilein2
+  │  ├─ <Extensions> []
+  │  └─ <Children>
+  │     ├─ another
+  │     │  ├─ <OPs>
+  │     │  │  ├─ moviefile3
+  │     │  │  │  └─ op: type:moviefilein path:/project1/moviefilein3
+  │     │  │  └─ moviefile4
+  │     │  │     └─ op: type:moviefilein path:/project1/moviefilein4
+  │     │  ├─ <Extensions> []
+  │     │  └─ <Children> []
+  │     └─ effects
+  │        ├─ <OPs>
+  │        │  ├─ blur1
+  │        │  │  └─ op: type:blur path:/project1/blur1
+  │        │  └─ level1
+  │        │     └─ op: type:level path:/project1/level1
+  │        ├─ <Extensions>
+  │        │  └─ tools
+  │        │     ├─ name: tools
+  │        │     ├─ func: FilterTools
+  │        │     ├─ dat_path: /project1/EXT_FilterTools
+  │        │     ├─ call: True
+  │        │     └─ args: None
+  │        └─ <Children>
+  │           └─ advanced
+  │              ├─ <OPs>
+  │              │  ├─ edge1
+  │              │  │  └─ op: type:edge path:/project1/edge1
+  │              │  └─ glow1
+  │              │     └─ op: type:glow path:/project1/glow1
+  │              ├─ <Extensions> []
+  │              └─ <Children> []
+  └─[END]
+  ```
+
+
+## CONCLUSION
+
+This refactoring will transform OProxy into a true dynamic metaprogrammatic proxy system that provides maximum flexibility while maintaining backward compatibility. The hybrid Proxy-Container pattern enables seamless switching between proxy and container behavior based on context, making the system more intuitive and powerful for TouchDesigner developers.
+
+The implementation is complex but achievable, requiring careful coordination across multiple files and systems. The phased approach ensures minimal disruption while delivering the full vision of a dynamic, context-aware proxy system.
