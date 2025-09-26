@@ -100,11 +100,33 @@ def proxy_remove(self, to_remove=None):
         
         # Regular container removal - recurse to remove children first
         node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
-        if 'Children' in node:
-            for child_name in list(node['Children']):
+        if 'Children' in node and node['Children']:
+            # Get a copy of children names to avoid modification during iteration
+            child_names = list(node['Children'].keys())
+            for child_name in child_names:
+                # Try to get the child proxy, but don't fail if it doesn't exist
                 child_proxy = getattr(self, child_name, None)
-                if child_proxy:
-                    child_proxy._remove()  # Recursive call
+                if child_proxy and hasattr(child_proxy, '_remove'):
+                    try:
+                        child_proxy._remove()  # Recursive call
+                        log(f"Removed child proxy '{child_name}'")
+                    except Exception as e:
+                        log(f"Error removing child proxy '{child_name}': {e}", level='warning')
+                        # Fall back to direct storage removal
+                        child_path = f"{self._dictPath}.{child_name}" if self._dictPath else child_name
+                        try:
+                            hierarchical_storage.remove_node(self._opr.OProxies, child_path, recursive=True)
+                            log(f"Removed child '{child_name}' directly from storage (fallback)")
+                        except Exception as e2:
+                            log(f"Error removing child '{child_name}' from storage: {e2}", level='warning')
+                else:
+                    # Child proxy doesn't exist as attribute, remove directly from storage
+                    child_path = f"{self._dictPath}.{child_name}" if self._dictPath else child_name
+                    try:
+                        hierarchical_storage.remove_node(self._opr.OProxies, child_path, recursive=True)
+                        log(f"Removed child '{child_name}' directly from storage")
+                    except Exception as e:
+                        log(f"Error removing child '{child_name}' from storage: {e}", level='warning')
         
         # Remove self from parent
         if hasattr(self, '_opr') and hasattr(self, '_dictPath'):

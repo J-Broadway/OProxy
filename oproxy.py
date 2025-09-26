@@ -34,6 +34,11 @@ class opr:
         for name, data in stored_proxies.items():
             # Convert dict-based OPs to list for _add
             ops_list = [op_data['op'] for op_data in data['OPs'].values()]
+            
+            # Skip empty main containers during restore
+            if not ops_list:
+                continue
+                
             proxy = self._add(name, ops_list, restore=True)
             self._restore_children(proxy, data['Children'])
             proxy._refresh()
@@ -47,8 +52,15 @@ class opr:
         for child_name, child_data in children_data.items():
             # Convert dict-based OPs to list for _add
             ops_list = [op_data['op'] for op_data in child_data['OPs'].values()]
-            child_proxy = parent_proxy._add(child_name, ops_list, restore=True)
-            self._restore_children(child_proxy, child_data['Children'])
+            
+            # Handle empty child containers (hybrid containers with no OPs)
+            if not ops_list:
+                # Skip empty containers during restore - they will be created on-demand via __call__
+                # when the user accesses them
+                continue
+            else:
+                child_proxy = parent_proxy._add(child_name, ops_list, restore=True)
+                self._restore_children(child_proxy, child_data['Children'])
 
     def _add(self, name, op, parent=None, restore=True):
         # Type/validation checks and normalization
@@ -278,3 +290,28 @@ class opr:
             str or dict: The formatted tree string or raw storage dict if asDict=True.
         """
         return OPContainer._tree(self, child, detail, asDict)
+
+    def _clear(self):
+        """
+        Clear the entire OProxy dictionary by removing all top-level containers.
+        This provides a clean way to reset the entire proxy system.
+        """
+        log("Clearing entire OProxy dictionary...")
+        oproxies_raw = self.OProxies.getRaw()
+        top_level_names = list(oproxies_raw.keys())
+        
+        for name in top_level_names:
+            try:
+                self._remove(name)
+                log(f"Removed container '{name}'")
+            except Exception as e:
+                log(f"Error removing container '{name}': {e}", level='warning')
+                # Force remove from storage if proxy removal fails
+                try:
+                    hierarchical_storage.remove_node(self.OProxies, name, recursive=True)
+                    log(f"Force removed container '{name}' from storage")
+                except Exception as e2:
+                    log(f"Error force removing container '{name}': {e2}", level='error')
+        
+        log("OProxy dictionary cleared")
+        return self

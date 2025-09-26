@@ -6,3 +6,4 @@ alwaysApply: true
 
 Working on a TouchDesigner extension that uses Python Version 3.11.1
 Each .py file is a seperate DAT located in the project
+Keep in mind that codebase contains TouchDesigner specific functions that will not be able to be emulated.

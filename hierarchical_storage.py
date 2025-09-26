@@ -57,30 +57,40 @@ def remove_node(dict_structure, path, recursive=True):
     if isinstance(path, str):
         path = path.split('.')
     
+    # Validate path exists before attempting removal
     current = dict_structure
     parents = []
     for i, segment in enumerate(path):
+        if segment not in current:
+            # Path doesn't exist, nothing to remove
+            return
         parents.append((current, segment))
         if i + 1 < len(path):
+            if 'Children' not in current[segment]:
+                # Path is incomplete, nothing to remove
+                return
             current = current[segment]['Children']
     
     # If recursive, prune children first
-    if recursive:
+    if recursive and 'Children' in current[segment]:
         node_to_remove = current[segment]
         # Recurse to children and remove them
-        for child_name in list(node_to_remove['Children']):
+        for child_name in list(node_to_remove['Children'].keys()):
             child_path = '.'.join(path + [child_name])
             remove_node(dict_structure, child_path, recursive=True)
     
-    del current[segment]
+    # Remove the node itself
+    if segment in current:
+        del current[segment]
     
     # Clean up empty parents upwards
     for parent_dict, parent_seg in reversed(parents[:-1]):
-        child_node = parent_dict[parent_seg]
-        if not child_node['OPs'] and not child_node['Extensions'] and not child_node['Children']:
-            del parent_dict[parent_seg]
-        else:
-            break
+        if parent_seg in parent_dict:
+            child_node = parent_dict[parent_seg]
+            if not child_node.get('OPs', {}) and not child_node.get('Extensions', []) and not child_node.get('Children', {}):
+                del parent_dict[parent_seg]
+            else:
+                break
 
 def traverse_tree(dict_structure, func, path=[]):
     """

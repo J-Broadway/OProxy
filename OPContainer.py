@@ -46,6 +46,92 @@ class OPContainer(list, OPBaseWrapper):
             op_name = wrapped_op.op.name
             hybrid_container._dictPath = f"{self._dictPath}.{op_name}"
         
+        # Ensure the hybrid container has access to container methods
+        # by setting up the same dynamic class structure as in oproxy._add
+        if hasattr(self, '_opr'):
+            class_dict = {
+                '_add': lambda self, name, op, restore=True: self._opr._add(name, op, parent=self, restore=restore),
+                '_remove': proxy_remove,
+                '_refresh': proxy_refresh
+            }
+            # Create a dynamic subclass with container methods
+            HybridContainerClass = type(f"Hybrid_{op_name}", (OPContainer,), class_dict)
+            # Create new instance with the same data
+            hybrid_container = HybridContainerClass([wrapped_op.op])
+            # Copy attributes
+            hybrid_container._opr = self._opr
+            hybrid_container._parent = self
+            hybrid_container._proxy_name = op_name
+            hybrid_container._dictPath = f"{self._dictPath}.{op_name}"
+            
+            # Initialize storage node for hybrid container to enable extension storage
+            hierarchical_storage.init_node(self._opr.OProxies, hybrid_container._dictPath)
+            
+            # CRITICAL FIX: Copy extensions from both parent container and hybrid container's own storage
+            # This ensures that extensions applied to either the parent or the hybrid are available
+            if hasattr(self, '_opr') and hasattr(self, '_dictPath'):
+                # First, try to get extensions from the hybrid container's own storage
+                hybrid_node = hierarchical_storage.get_node(self._opr.OProxies, hybrid_container._dictPath)
+                
+                # Also check parent container for extensions
+                parent_node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
+                
+                # Collect extensions from both sources
+                all_extensions = []
+                if 'Extensions' in hybrid_node:
+                    all_extensions.extend(hybrid_node['Extensions'])
+                if 'Extensions' in parent_node:
+                    all_extensions.extend(parent_node['Extensions'])
+                
+                if all_extensions:
+                    for ext in all_extensions:
+                        try:
+                            dat_path = ext['dat_path']
+                            dat_op = op(dat_path)
+                            if not dat_op or not isinstance(dat_op, td.DAT):
+                                continue
+                            cls = ext.get('cls')
+                            func = ext.get('func')
+                            call = ext.get('call', False)
+                            args = ext.get('args')
+                            # Convert args to a standard list if it's a TouchDesigner storage object
+                            if args is not None and not isinstance(args, (tuple, list)):
+                                try:
+                                    args = list(args)
+                                except Exception:
+                                    continue
+                            if args and not isinstance(args, (tuple, list)):
+                                continue
+                            if args and isinstance(args, tuple) and len(args) == 1 and not isinstance(args[0], (tuple, list)):
+                                args = (args[0],)
+                            obj = ast_mod.Main(cls=cls, func=func, op=dat_op)
+                            if call:
+                                result = obj(*args) if args else obj()
+                                if isinstance(obj, type):  # Class instantiation
+                                    class InstanceDelegate:
+                                        def __init__(self, instance):
+                                            self.instance = instance
+                                        def __get__(self, obj, owner):
+                                            if obj is None:
+                                                return self.instance
+                                            method_or_attr = getattr(self.instance, owner.__name__)
+                                            if callable(method_or_attr):
+                                                def wrapped_method(*args, **kwargs):
+                                                    try:
+                                                        return method_or_attr(*args, **kwargs)
+                                                    except Exception as e:
+                                                        log(f"Error in method '{owner.__name__}' of extension '{ext['name']}' from DAT {dat_path}: {str(e)}", level='error')
+                                                        raise
+                                                return wrapped_method
+                                            return method_or_attr
+                                    setattr(type(hybrid_container), ext['name'], InstanceDelegate(result))
+                                else:
+                                    setattr(type(hybrid_container), ext['name'], types.MethodType(obj, hybrid_container))
+                            else:
+                                setattr(type(hybrid_container), ext['name'], obj)
+                        except Exception as e:
+                            log(f"Failed to copy extension '{ext.get('name', 'unknown')}' to hybrid container: {e}")
+        
         return hybrid_container
     
     def cls(self):
@@ -53,7 +139,7 @@ class OPContainer(list, OPBaseWrapper):
         return type(self)
     
     def __getattr__(self, name):
-        # Check if the attribute exists on the container itself (e.g., extensions)
+        # Check if the attribute exists on the container itself (e.g., extensions, container methods)
         if hasattr(self.__class__, name):
             attr = getattr(self.__class__, name)
             # If the attribute is a descriptor, call its __get__ method
@@ -62,7 +148,9 @@ class OPContainer(list, OPBaseWrapper):
             return attr  # Otherwise, return the attribute directly
         
         # Check for child containers in storage first
-        if hasattr(self, '_opr') and hasattr(self, '_dictPath'):
+        # Only look for child containers if this is NOT a multi-OP container
+        # Multi-OP containers should not have child containers accessible via attribute access
+        if hasattr(self, '_opr') and hasattr(self, '_dictPath') and len(self) <= 1:
             node = hierarchical_storage.get_node(self._opr.OProxies, self._dictPath)
             if 'Children' in node and name in node['Children']:
                 # Child container exists, create and return it
@@ -88,13 +176,18 @@ class OPContainer(list, OPBaseWrapper):
                 
                 return child_container
         
+        # Container methods should be available on the container itself
+        # These are already defined on the class, so they should be caught by the first check above
+        
         # Context-aware delegation based on container size
         if len(self) == 1:
             # Single OP - proxy behavior
-            if hasattr(self[0].op, name):
-                return getattr(self[0].op, name)
+            # Access the wrapped OP directly to avoid __getitem__ recursion
+            wrapped_op = list.__getitem__(self, 0)  # Use list.__getitem__ to avoid recursion
+            if hasattr(wrapped_op.op, name):
+                return getattr(wrapped_op.op, name)
             # Fall back to OP_Proxy behavior
-            return getattr(self[0], name)
+            return getattr(wrapped_op, name)
         else:
             # Multiple OPs or empty - container behavior
             # Check if any wrapped OP has the attribute before trying to access it
@@ -114,11 +207,13 @@ class OPContainer(list, OPBaseWrapper):
             super().__setattr__(name, value)
         elif len(self) == 1:
             # Single OP - proxy behavior
-            if hasattr(self[0].op, name):
-                setattr(self[0].op, name, value)
+            # Access the wrapped OP directly to avoid __getitem__ recursion
+            wrapped_op = list.__getitem__(self, 0)  # Use list.__getitem__ to avoid recursion
+            if hasattr(wrapped_op.op, name):
+                setattr(wrapped_op.op, name, value)
             else:
                 # Fall back to OP_Proxy behavior
-                setattr(self[0], name, value)
+                setattr(wrapped_op, name, value)
         else:
             # Multiple OPs or empty - container behavior
             for w in self:
@@ -128,7 +223,9 @@ class OPContainer(list, OPBaseWrapper):
     def __getitem__(self, key):
         if len(self) == 1:
             # Single OP - proxy behavior
-            return self[0].op[key]
+            # Access the wrapped OP directly to avoid recursion
+            wrapped_op = list.__getitem__(self, 0)  # Use list.__getitem__ to avoid recursion
+            return wrapped_op.op[key]
         else:
             # Multiple OPs or empty - container behavior
             return [w[key] for w in self]
@@ -136,7 +233,9 @@ class OPContainer(list, OPBaseWrapper):
     def __setitem__(self, key, value):
         if len(self) == 1:
             # Single OP - proxy behavior
-            self[0].op[key] = value
+            # Access the wrapped OP directly to avoid recursion
+            wrapped_op = list.__getitem__(self, 0)  # Use list.__getitem__ to avoid recursion
+            wrapped_op.op[key] = value
         else:
             # Multiple OPs or empty - container behavior
             for w in self:
@@ -145,7 +244,9 @@ class OPContainer(list, OPBaseWrapper):
     def __str__(self):
         if len(self) == 1:
             # Single OP - proxy behavior
-            return str(self[0].op)
+            # Access the wrapped OP directly to avoid recursion
+            wrapped_op = list.__getitem__(self, 0)  # Use list.__getitem__ to avoid recursion
+            return str(wrapped_op.op)
         else:
             # Multiple OPs or empty - container behavior
             return f"{type(self).__name__}({[w.op for w in self]})"
@@ -153,7 +254,9 @@ class OPContainer(list, OPBaseWrapper):
     def __repr__(self):
         if len(self) == 1:
             # Single OP - proxy behavior
-            return repr(self[0].op)
+            # Access the wrapped OP directly to avoid recursion
+            wrapped_op = list.__getitem__(self, 0)  # Use list.__getitem__ to avoid recursion
+            return repr(wrapped_op.op)
         else:
             # Multiple OPs or empty - container behavior
             return f"{type(self).__name__}({[w.op for w in self]})"

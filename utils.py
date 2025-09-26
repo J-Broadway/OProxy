@@ -192,9 +192,10 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                             nested_prefix = section_prefix + pipe_prefix + "   "  # 3 spaces for correct indentation
                             format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
                         else:
-                            # In minimal mode, just show the child name
-                            child_connector = "└─" if is_last_child else "├─"
-                            result.append(f"{section_prefix}{pipe_prefix}   {child_connector} {child_name}")
+                            # In minimal mode, show child name and recursively process children
+                            child_ancestor_stack = []  # Empty to avoid extra pipes
+                            nested_prefix = section_prefix + pipe_prefix + "   "  # 3 spaces for correct indentation
+                            format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
         
         def format_node_with_pipes(node_data, node_name, is_root=False, is_last=False, ancestor_stack=[], node_prefix=None):
             """Format a single node with proper pipe handling"""
