@@ -66,7 +66,7 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
             # Always show sections based on detail level, even if empty
             has_ops = detail == 'full'
             has_extensions = detail in ['full', 'minimal']
-            has_children = detail == 'full'
+            has_children = detail in ['full', 'minimal']
             
             # Determine which sections to show and their order
             sections = []
@@ -184,9 +184,16 @@ def format_ascii_tree(node_oproxies, prefix="", detail='full', node_name=None):
                     child_items = list(children.items())
                     for i, (child_name, child_data) in enumerate(child_items):
                         is_last_child = i == len(child_items) - 1
-                        child_ancestor_stack = []  # Empty to avoid extra pipes
-                        nested_prefix = section_prefix + pipe_prefix + "   "  # 3 spaces for correct indentation
-                        format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
+                        
+                        if detail == 'full':
+                            # In full mode, let format_node_with_pipes handle everything
+                            child_ancestor_stack = []  # Empty to avoid extra pipes
+                            nested_prefix = section_prefix + pipe_prefix + "   "  # 3 spaces for correct indentation
+                            format_node_with_pipes(child_data, child_name, is_root=False, is_last=is_last_child, ancestor_stack=child_ancestor_stack, node_prefix=nested_prefix)
+                        else:
+                            # In minimal mode, just show the child name
+                            child_connector = "└─" if is_last_child else "├─"
+                            result.append(f"{section_prefix}{pipe_prefix}   {child_connector} {child_name}")
         
         def format_node_with_pipes(node_data, node_name, is_root=False, is_last=False, ancestor_stack=[], node_prefix=None):
             """Format a single node with proper pipe handling"""
