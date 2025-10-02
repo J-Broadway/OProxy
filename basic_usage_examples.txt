@@ -1,0 +1,36 @@
+```
+'''
+OProxy is to be used alongside TouchDesigner extensions.
+'''
+from TDStoreTools import StorageManager 
+import TDFunctions as TDF
+oproxy = mod('OProxy/oproxy') # import OProxy into extension 
+
+class src: # The name of the extension for accessibility
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp
+		self.OProxy = oproxy.root(ownerComp) # Container entry point so users can now do parent.src.Opr to access OProxy
+```
+
+# Now OPRoxy can be access through any DAT in the container with the following definition
+opr = parent.shortcut.OProxy
+
+# Basic Usage Examples
+
+# Create a container for video processing operators
+opr._add('video', ['moviefilein1', 'moviefilein2'])
+
+# Access all proxy operators in the container
+for op in opr.video:
+    print(op.path)
+
+# Access a specific proxies
+opr.video('moviefilein1')
+opr.video[0]    # effectively the same as the above
+
+# You can set proxy itmes
+opr.video('moviefilein1').par.file = '/path/to/video.mov'
+
+# Or just loop through all instances
+for i in op.video:
+    i.par.playmode = 0

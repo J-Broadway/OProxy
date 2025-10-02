@@ -1,0 +1,10 @@
+# Ignore files matching oproxy.<number>.toe
+oproxy.*.toe
+utils_old.py
+
+# Ignore files containing CrashAutoSave or TouchDesignerCrash
+*CrashAutoSave*
+*TouchDesignerCrash*
+
+# Ignore folders named Backup
+Backup/
