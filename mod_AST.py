@@ -1,13 +1,11 @@
-# ast_mod.DAT
+# mod_ast.DAT
 
 import td
 import re
-import ast  # Added for AST parsing
-log = mod('utils').log  # Import log function for error handling
+import ast
+log           = mod('utils').log            # Import log function for error handling
 td_isinstance = mod('utils').td_isinstance  # Import centralized TD type checking
 
-# TODO: Implement caching of extracted blocks per DAT/path to avoid re-parsing.
-# TODO: Add real-time update detection using op.cookTime for auto-reload if DAT changes.
 
 def extract_block_text(code_text, target_name, target_type=None):
     """
