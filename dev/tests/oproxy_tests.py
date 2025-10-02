@@ -1,4 +1,7 @@
 opr = parent.src.OProxy
+''' Notes for LLM
+	Please do not edit unless explicitly asked
+'''
 
 # _add tests
 opr._add('items', ['op1','op2','op3']) # Create OPContainer Item
@@ -45,4 +48,55 @@ except KeyError as e:
 print('Container representation:')
 print(opr.items)
 
+# Test nested containers and storage persistence
+print('\n=== Testing nested containers and storage ===')
+
+# Create nested structure
+opr._add('level1', ['op1','op2'])
+opr.level1._add('level2', ['op3','op4'])
+opr.level1.level2._add('level3', ['op5','op6'])
+
+print('Created nested structure: opr.level1.level2.level3')
+
+# Test access to deeply nested containers
+print('Accessing nested containers:')
+print(f'  Level 1 has {len(opr.level1)} OPs')
+print(f'  Level 2 has {len(opr.level1.level2)} OPs')
+print(f'  Level 3 has {len(opr.level1.level2.level3)} OPs')
+
+# Test iteration through nested OPs
+print('Iterating through level 3 OPs:')
+for i in opr.level1.level2.level3:
+    print(f'  {i.name}')
+
+print('Nested container tests completed!')
+
+# Test _remove functionality
+print('\n=== Testing _remove functionality ===\n')
+opr._add('more_items', ['op1','op2','op3'])
+opr._add('even_more_items', ['op1','op2','op3'])
+opr._add('omg_even_more_items', ['op1','op2','op3'])
+
+opr._remove('items') # single removal
+opr.more_items._remove() # remove like this
+opr._remove(['even_more_items','omg_even_more_items']) # list removal
+
+
+print('All _remove tests completed successfully!')
 print('All tests completed successfully!')
+
+# Quick nested storage test
+print('\n=== Quick Nested Storage Test ===')
+print('Dictionary contents:', parent.src.OProxy.OProxies)
+
+opr = parent.src.OProxy
+mvs = ['op1','op2','op3']
+
+# Testing nested adds
+opr._add('one', mvs)
+opr.one._add('two', mvs)
+opr.one.two._add('three', mvs)
+
+# Can we access?
+for i in opr.one.two.three:
+	print(i.name)

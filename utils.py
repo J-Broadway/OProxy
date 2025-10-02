@@ -59,6 +59,38 @@ def store(container, storage_dict, parent_path=""):
         storage_dict['children'][container.path or 'root'] = container_data
 
 
+def remove(container, storage_dict, parent_path=""):
+    """
+    Remove a container from the TouchDesigner storage structure.
+
+    Args:
+        container: OPContainer to remove
+        storage_dict: The root storage dict (e.g., self.OProxies)
+        parent_path: Path to parent container (empty string for root level)
+    """
+    if parent_path:
+        # Navigate to parent location and remove the container
+        current_dict = storage_dict
+        path_parts = parent_path.split('.')
+
+        # Navigate to parent
+        for part in path_parts:
+            if part in current_dict['children']:
+                current_dict = current_dict['children'][part]
+            else:
+                return  # Parent path doesn't exist
+
+        # Remove the container
+        container_name = container.path.split('.')[-1]
+        if container_name in current_dict['children']:
+            del current_dict['children'][container_name]
+    else:
+        # Root level removal
+        container_name = container.path or 'root'
+        if container_name in storage_dict['children']:
+            del storage_dict['children'][container_name]
+
+
 def td_isinstance(value, expected_type, allow_string=True):
     """
     Centralized TouchDesigner type checking and validation with string path support.

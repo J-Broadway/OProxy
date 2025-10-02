@@ -2,6 +2,16 @@
 from TDStoreTools import StorageManager
 from OPBaseWrapper import OPContainer
 
+'''
+NOTES FOR LLMs:
+print(self.OProxies) # will print {'children': {}, 'extensions': []} to console
+Usage examples on how to access storage
+self.OProxies['children'] = {'hello': 'world'} # {'OProxies': {'children': {'hello': 'world'}, 'extensions': []}}
+self.OProxies['extensions'] = ['hello', 'extensions'] # Dictionary now {'OProxies': {'children': {'hello': 'world'}, 'extensions': ['hello', 'extensions']}}
+
+Storage will automatically persist after container extension re-initializations.
+'''
+
 class root(OPContainer):
     """Root OProxy container."""
 
@@ -22,13 +32,7 @@ class root(OPContainer):
         self.storage = StorageManager(self, ownerComp, storedItems)
 
         # Any root-specific setup here (e.g., logging if needed later)
+        self._refresh()  # Load persisted hierarchy from storage
         print("OProxy root initialized")
-        '''
-        Notes thus far
-        print(self.OProxies) # will print {'children': {}, 'extensions': []} to console
-        Usage examples on how to access storage
-        self.OProxies['children'] = {'hello': 'world'} # {'OProxies': {'children': {'hello': 'world'}, 'extensions': []}}
-        self.OProxies['extensions'] = ['hello', 'extensions'] # Dictionary now {'OProxies': {'children': {'hello': 'world'}, 'extensions': ['hello', 'extensions']}}
-        '''
 
     

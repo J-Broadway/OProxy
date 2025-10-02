@@ -3,6 +3,11 @@ from abc import ABC, abstractmethod
 import td
 from utils import td_isinstance
 
+''' LLM Notes:
+Comments that begin with #! are meant to be updated dynamically when incongruencies
+in comment vs codebase are found.
+'''
+
 # Import utils module for storage functions
 utils = mod('utils')
 
@@ -12,7 +17,6 @@ class OPBaseWrapper(ABC):
     def __init__(self, path="", parent=None):
         self._path = path  # Hierarchical path (e.g., 'effects.advanced')
         self._parent = parent
-
     @abstractmethod
     def _add(self, name, op):
         """Add a child (OP or sub-container)."""
@@ -156,16 +160,73 @@ class OPContainer(OPBaseWrapper):
 
         print(f"DEBUG _add: Successfully added container '{name}' with {len(validated_ops)} OPs")
 
-        # Store in TouchDesigner storage if this is root
-        if self.is_root:
-            utils.store(container, self.OProxies, self.path)
+        # Store in TouchDesigner storage by finding root and saving entire hierarchy
+        root = self.__find_root()
+        if hasattr(root, 'OProxies'):  # Ensure it's a proper root with storage
+            root.__save_to_storage()
 
-    def _remove(self, name):
-        if name in self._children:
-            del self._children[name]
-            if self.is_root:
-                self.__save_to_storage()
-        return self
+    def __find_root(self):
+        """Internal method: Traverse up parent chain to find root container."""
+        current = self
+        while current._parent is not None:
+            current = current._parent
+        return current
+
+    def _remove(self, name=None):
+        """
+        Remove containers.
+
+        Usage:
+        - container._remove()           # Remove this container from its parent
+        - container._remove('child')    # Remove named child from this container
+        - container._remove(['child1', 'child2'])  # Remove multiple children
+        """
+        # Case 1: _remove() - remove self from parent
+        if name is None:
+            if self._parent is not None:
+                # Remove self from parent
+                parent_container = self._parent
+                my_name = None
+                # Find my name in parent's children
+                for child_name, child in parent_container._children.items():
+                    if child is self:
+                        my_name = child_name
+                        break
+
+                if my_name is not None:
+                    print(f"DEBUG _remove: Removing self ('{my_name}') from parent")
+                    del parent_container._children[my_name]
+                    # Find root and save entire updated hierarchy
+                    root = parent_container.__find_root()
+                    if hasattr(root, 'OProxies'):
+                        utils.remove(self, root.OProxies, parent_container.path)
+                        root.__save_to_storage()
+                else:
+                    print("DEBUG _remove: Could not find self in parent children")
+            else:
+                print("DEBUG _remove: Cannot remove root container")
+            return self
+
+        # Case 2: _remove([names]) - remove multiple children
+        elif isinstance(name, (list, tuple)):
+            for item_name in name:
+                self._remove(item_name)  # Recursive call for single item removal
+            return self
+
+        # Case 3: _remove('name') - remove single child
+        else:
+            if name in self._children:
+                container_to_remove = self._children[name]
+                print(f"DEBUG _remove: Removing child '{name}' from container '{self.path or 'root'}'")
+                del self._children[name]
+                # Find root and save entire updated hierarchy
+                root = self.__find_root()
+                if hasattr(root, 'OProxies'):
+                    utils.remove(container_to_remove, root.OProxies, self.path)
+                    root.__save_to_storage()
+            else:
+                print(f"DEBUG _remove: Child '{name}' not found in container '{self.path or 'root'}'")
+            return self
 
     def _tree(self, indent=""):
         lines = [f"{indent}Container: {self.path or 'root'}"]
@@ -215,3 +276,104 @@ class OPContainer(OPBaseWrapper):
         if name in self._children and hasattr(self._children[name], '_op'):
             return self._children[name]
         raise KeyError(f"No OP named '{name}' in this container")
+
+    def __save_to_storage(self):
+        """Save the current container hierarchy to TouchDesigner storage."""
+        if not self.is_root:
+            raise RuntimeError("__save_to_storage() can only be called on root containers")
+
+        print("DEBUG __save_to_storage: Saving container hierarchy to storage...")
+
+        # Build the complete nested storage structure
+        children_data = self.__build_storage_structure()
+        self.OProxies['children'] = children_data
+
+        print(f"DEBUG __save_to_storage: Saved {len(children_data)} top-level containers to storage")
+
+    def __build_storage_structure(self):
+        """Recursively build the nested storage structure from container hierarchy."""
+        result = {}
+
+        for name, child in self._children.items():
+            if isinstance(child, OPContainer):
+                # Build structure for this container
+                container_data = {
+                    'children': child.__build_storage_structure(),  # Recursively build nested children
+                    'ops': {},  # OPs in this container
+                    'extensions': {}
+                }
+
+                # Add OPs from this container
+                for op_name, op_child in child._children.items():
+                    if hasattr(op_child, '_op'):  # It's an OPLeaf
+                        container_data['ops'][op_name] = op_child._op.path
+
+                result[name] = container_data
+
+        return result
+
+    def _refresh(self):
+        """Refresh/reload the container hierarchy from TouchDesigner storage."""
+        if not self.is_root:
+            raise RuntimeError("_refresh() can only be called on root containers")
+
+        print("DEBUG _refresh: Loading container hierarchy from storage...")
+
+        # Clear existing children for fresh reload
+        self._children.clear()
+
+        # Load from storage
+        children_data = self.OProxies.get('children', {})
+
+        for container_name, container_data in children_data.items():
+            print(f"DEBUG _refresh: Loading container '{container_name}'")
+
+            # Create the container
+            container_path = container_name  # Root level containers
+            container = OPContainer(path=container_path, parent=self)
+
+            # Load OPs into the container
+            ops_data = container_data.get('ops', {})
+            for op_name, op_path in ops_data.items():
+                print(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
+                op = td.op(op_path)
+                if op and op.valid:
+                    leaf_path = f"{container_path}.{op_name}"
+                    leaf = OPLeaf(op, path=leaf_path, parent=container)
+                    container._children[op_name] = leaf
+                else:
+                    print(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid")
+
+            # Recursively load nested children containers
+            nested_children = container_data.get('children', {})
+            if nested_children:
+                self._load_nested_containers(container, nested_children, container_path)
+
+            # Add container to root's children
+            self._children[container_name] = container
+
+        print(f"DEBUG _refresh: Loaded {len(self._children)} containers from storage")
+
+    def _load_nested_containers(self, parent_container, children_data, parent_path):
+        """Helper method to recursively load nested containers."""
+        for container_name, container_data in children_data.items():
+            print(f"DEBUG _refresh: Loading nested container '{container_name}' under '{parent_path}'")
+
+            container_path = f"{parent_path}.{container_name}"
+            container = OPContainer(path=container_path, parent=parent_container)
+
+            # Load OPs
+            ops_data = container_data.get('ops', {})
+            for op_name, op_path in ops_data.items():
+                op = td.op(op_path)
+                if op and op.valid:
+                    leaf_path = f"{container_path}.{op_name}"
+                    leaf = OPLeaf(op, path=leaf_path, parent=container)
+                    container._children[op_name] = leaf
+
+            # Recursively load deeper nesting
+            nested_children = container_data.get('children', {})
+            if nested_children:
+                self._load_nested_containers(container, nested_children, container_path)
+
+            parent_container._children[container_name] = container
