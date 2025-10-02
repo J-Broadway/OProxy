@@ -58,6 +58,10 @@ opr.level1.level2._add('level3', ['op5','op6'])
 
 print('Created nested structure: opr.level1.level2.level3')
 
+# Can we access?
+for i in opr.level1.level2.level3:
+	print(i.name)
+
 # Test access to deeply nested containers
 print('Accessing nested containers:')
 print(f'  Level 1 has {len(opr.level1)} OPs')
@@ -83,20 +87,8 @@ opr._remove(['even_more_items','omg_even_more_items']) # list removal
 
 
 print('All _remove tests completed successfully!')
-print('All tests completed successfully!')
-
-# Quick nested storage test
-print('\n=== Quick Nested Storage Test ===')
 print('Dictionary contents:', parent.src.OProxy.OProxies)
 
-opr = parent.src.OProxy
-mvs = ['op1','op2','op3']
 
-# Testing nested adds
-opr._add('one', mvs)
-opr.one._add('two', mvs)
-opr.one.two._add('three', mvs)
 
-# Can we access?
-for i in opr.one.two.three:
-	print(i.name)
+print('All tests completed successfully!')

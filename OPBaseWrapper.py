@@ -118,47 +118,47 @@ class OPContainer(OPBaseWrapper):
         will also be an OPContainer that inherits all the OPBaseWrapper methods and properties
         So user can do opr.Media._add('moviefilein3', 'moviefilein4') and so on...
         '''
-        print(f"DEBUG _add: Adding container '{name}' to path '{self.path}'")
+        utils.log(f"DEBUG _add: Adding container '{name}' to path '{self.path}'")
 
         # Check if container already exists
         if name in self._children:
-            print(f"DEBUG _add: Container '{name}' already exists - skipping")
+            utils.log(f"DEBUG _add: Container '{name}' already exists - skipping")
             return
 
         # Normalize op parameter to list of OP objects
         if not isinstance(op, (list, tuple)):
             op_list = [op]
-            print(f"DEBUG _add: Single OP provided, converted to list: {op}")
+            utils.log(f"DEBUG _add: Single OP provided, converted to list: {op}")
         else:
             op_list = op
-            print(f"DEBUG _add: List of OPs provided, count: {len(op_list)}")
+            utils.log(f"DEBUG _add: List of OPs provided, count: {len(op_list)}")
 
         # Validate and convert all OPs
         validated_ops = []
         for i, op_item in enumerate(op_list):
-            print(f"DEBUG _add: Validating OP {i+1}/{len(op_list)}: {op_item}")
-            validated_op = td_isinstance(op_item, 'op')
+            utils.log(f"DEBUG _add: Validating OP {i+1}/{len(op_list)}: {op_item}")
+            validated_op = td_isinstance(op_item, 'op') # TouchDesigner OP Type Checking
             validated_ops.append(validated_op)
-            print(f"DEBUG _add: Validated OP: {validated_op.name} (path: {validated_op.path})")
+            utils.log(f"DEBUG _add: Validated OP: {validated_op.name} (path: {validated_op.path})")
 
         # Create new container with proper path
         child_path = f"{self.path}.{name}" if self.path else name
-        print(f"DEBUG _add: Creating container with path '{child_path}'")
+        utils.log(f"DEBUG _add: Creating container with path '{child_path}'")
         container = OPContainer(path=child_path, parent=self)
 
         # Add validated OPs as leaves to the container
-        print(f"DEBUG _add: Adding {len(validated_ops)} OPs as leaves to container '{name}'")
+        utils.log(f"DEBUG _add: Adding {len(validated_ops)} OPs as leaves to container '{name}'")
         for validated_op in validated_ops:
             leaf_path = f"{child_path}.{validated_op.name}"
-            print(f"DEBUG _add: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
+            utils.log(f"DEBUG _add: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
             leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
             container._children[validated_op.name] = leaf
 
         # Add container to this container's children
-        print(f"DEBUG _add: Adding container '{name}' to parent children dict")
+        utils.log(f"DEBUG _add: Adding container '{name}' to parent children dict")
         self._children[name] = container
 
-        print(f"DEBUG _add: Successfully added container '{name}' with {len(validated_ops)} OPs")
+        utils.log(f"DEBUG _add: Successfully added container '{name}' with {len(validated_ops)} OPs")
 
         # Store in TouchDesigner storage by finding root and saving entire hierarchy
         root = self.__find_root()
@@ -194,7 +194,7 @@ class OPContainer(OPBaseWrapper):
                         break
 
                 if my_name is not None:
-                    print(f"DEBUG _remove: Removing self ('{my_name}') from parent")
+                    utils.log(f"DEBUG _remove: Removing self ('{my_name}') from parent")
                     del parent_container._children[my_name]
                     # Find root and save entire updated hierarchy
                     root = parent_container.__find_root()
@@ -202,9 +202,9 @@ class OPContainer(OPBaseWrapper):
                         utils.remove(self, root.OProxies, parent_container.path)
                         root.__save_to_storage()
                 else:
-                    print("DEBUG _remove: Could not find self in parent children")
+                    utils.log("DEBUG _remove: Could not find self in parent children")
             else:
-                print("DEBUG _remove: Cannot remove root container")
+                utils.log("DEBUG _remove: Cannot remove root container")
             return self
 
         # Case 2: _remove([names]) - remove multiple children
@@ -217,7 +217,7 @@ class OPContainer(OPBaseWrapper):
         else:
             if name in self._children:
                 container_to_remove = self._children[name]
-                print(f"DEBUG _remove: Removing child '{name}' from container '{self.path or 'root'}'")
+                utils.log(f"DEBUG _remove: Removing child '{name}' from container '{self.path or 'root'}'")
                 del self._children[name]
                 # Find root and save entire updated hierarchy
                 root = self.__find_root()
@@ -225,7 +225,7 @@ class OPContainer(OPBaseWrapper):
                     utils.remove(container_to_remove, root.OProxies, self.path)
                     root.__save_to_storage()
             else:
-                print(f"DEBUG _remove: Child '{name}' not found in container '{self.path or 'root'}'")
+                utils.log(f"DEBUG _remove: Child '{name}' not found in container '{self.path or 'root'}'")
             return self
 
     def _tree(self, indent=""):
@@ -282,13 +282,13 @@ class OPContainer(OPBaseWrapper):
         if not self.is_root:
             raise RuntimeError("__save_to_storage() can only be called on root containers")
 
-        print("DEBUG __save_to_storage: Saving container hierarchy to storage...")
+        utils.log("DEBUG __save_to_storage: Saving container hierarchy to storage...")
 
         # Build the complete nested storage structure
         children_data = self.__build_storage_structure()
         self.OProxies['children'] = children_data
 
-        print(f"DEBUG __save_to_storage: Saved {len(children_data)} top-level containers to storage")
+        utils.log(f"DEBUG __save_to_storage: Saved {len(children_data)} top-level containers to storage")
 
     def __build_storage_structure(self):
         """Recursively build the nested storage structure from container hierarchy."""
@@ -317,7 +317,7 @@ class OPContainer(OPBaseWrapper):
         if not self.is_root:
             raise RuntimeError("_refresh() can only be called on root containers")
 
-        print("DEBUG _refresh: Loading container hierarchy from storage...")
+        utils.log("DEBUG _refresh: Loading container hierarchy from storage...")
 
         # Clear existing children for fresh reload
         self._children.clear()
@@ -326,7 +326,7 @@ class OPContainer(OPBaseWrapper):
         children_data = self.OProxies.get('children', {})
 
         for container_name, container_data in children_data.items():
-            print(f"DEBUG _refresh: Loading container '{container_name}'")
+            utils.log(f"DEBUG _refresh: Loading container '{container_name}'")
 
             # Create the container
             container_path = container_name  # Root level containers
@@ -335,14 +335,14 @@ class OPContainer(OPBaseWrapper):
             # Load OPs into the container
             ops_data = container_data.get('ops', {})
             for op_name, op_path in ops_data.items():
-                print(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
+                utils.log(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
                 op = td.op(op_path)
                 if op and op.valid:
                     leaf_path = f"{container_path}.{op_name}"
                     leaf = OPLeaf(op, path=leaf_path, parent=container)
                     container._children[op_name] = leaf
                 else:
-                    print(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid")
+                    utils.log(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid")
 
             # Recursively load nested children containers
             nested_children = container_data.get('children', {})
@@ -352,12 +352,12 @@ class OPContainer(OPBaseWrapper):
             # Add container to root's children
             self._children[container_name] = container
 
-        print(f"DEBUG _refresh: Loaded {len(self._children)} containers from storage")
+        utils.log(f"DEBUG _refresh: Loaded {len(self._children)} containers from storage")
 
     def _load_nested_containers(self, parent_container, children_data, parent_path):
         """Helper method to recursively load nested containers."""
         for container_name, container_data in children_data.items():
-            print(f"DEBUG _refresh: Loading nested container '{container_name}' under '{parent_path}'")
+            utils.log(f"DEBUG _refresh: Loading nested container '{container_name}' under '{parent_path}'")
 
             container_path = f"{parent_path}.{container_name}"
             container = OPContainer(path=container_path, parent=parent_container)

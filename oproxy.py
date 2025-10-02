@@ -2,6 +2,9 @@
 from TDStoreTools import StorageManager
 from OPBaseWrapper import OPContainer
 
+# Import utils module for logging functions
+utils = mod('utils')
+
 '''
 NOTES FOR LLMs:
 print(self.OProxies) # will print {'children': {}, 'extensions': []} to console
@@ -33,6 +36,6 @@ class root(OPContainer):
 
         # Any root-specific setup here (e.g., logging if needed later)
         self._refresh()  # Load persisted hierarchy from storage
-        print("OProxy root initialized")
+        utils.log("OProxy root initialized")
 
     
