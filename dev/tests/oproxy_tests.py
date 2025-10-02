@@ -89,6 +89,86 @@ opr._remove(['even_more_items','omg_even_more_items']) # list removal
 print('All _remove tests completed successfully!')
 print('Dictionary contents:', parent.src.OProxy.OProxies)
 
+#### PLEASE NEW TESTS UNDER HERE ####
 
+# Test new _add functionality: adding to existing containers
+print('\n=== Testing Enhanced _add Functionality ===\n')
+
+# Test 1: Create new container (existing behavior)
+print('Test 1: Creating new container with initial OPs')
+opr._add('test_group', ['op1', 'op2'])
+print(f'Created test_group with {len(opr.test_group)} OPs')
+print(f'OPs in test_group: {[op.name for op in opr.test_group]}')
+
+# Test 2: Add single OP to existing container (new behavior)
+print('\nTest 2: Adding single OP to existing container')
+opr._add('test_group', 'op3')
+print(f'After adding op3: {len(opr.test_group)} OPs')
+print(f'OPs in test_group: {[op.name for op in opr.test_group]}')
+
+# Test 3: Add multiple OPs to existing container (new behavior)
+print('\nTest 3: Adding multiple OPs to existing container')
+opr._add('test_group', ['op4', 'op5'])
+print(f'After adding op4, op5: {len(opr.test_group)} OPs')
+print(f'OPs in test_group: {[op.name for op in opr.test_group]}')
+
+# Test 4: Attempt to add duplicate OPs (should skip with logging)
+print('\nTest 4: Testing duplicate OP handling')
+opr._add('test_group', ['op1', 'op6'])  # op1 is duplicate, op6 is new
+print(f'After adding duplicates: {len(opr.test_group)} OPs')
+print(f'OPs in test_group: {[op.name for op in opr.test_group]}')
+
+# Test 5: Create another new container to test mixed usage
+print('\nTest 5: Creating second container')
+opr._add('media_group', ['op1', 'op2'])
+print(f'Created media_group with {len(opr.media_group)} OPs')
+
+# Test 6: Add to media_group
+print('\nTest 6: Adding to media_group')
+opr._add('media_group', ['op3', 'op4'])
+print(f'media_group now has {len(opr.media_group)} OPs')
+
+# Test 7: Test validation - reserved names
+print('\nTest 7: Testing name validation (reserved names)')
+try:
+    opr._add('_add', ['op1'])  # Should fail
+    print('ERROR: Should have failed for reserved name _add')
+except ValueError as e:
+    print(f'Correctly caught ValueError for reserved name: {e}')
+
+try:
+    opr._add('path', ['op1'])  # Should fail
+    print('ERROR: Should have failed for reserved name path')
+except ValueError as e:
+    print(f'Correctly caught ValueError for reserved name: {e}')
+
+try:
+    opr._add('__str__', ['op1'])  # Should fail
+    print('ERROR: Should have failed for magic method __str__')
+except ValueError as e:
+    print(f'Correctly caught ValueError for magic method: {e}')
+
+# Test 8: Test validation - conflicting with existing OP
+print('\nTest 8: Testing name conflicts with existing OPs')
+opr._add('single_op', 'op1')  # Creates container with one OP
+try:
+    opr._add('single_op', 'op2')  # Should fail - name conflicts with existing OP
+    print('ERROR: Should have failed for name conflict with existing OP')
+except ValueError as e:
+    print(f'Correctly caught ValueError for name conflict: {e}')
+
+# Test 9: Test that adding to non-existent sub-containers works
+print('\nTest 9: Adding to existing sub-containers')
+opr._add('nested_test', ['op1'])
+opr.nested_test._add('sub_group', ['op2'])  # Creates sub-container
+opr.nested_test._add('sub_group', ['op3'])  # Adds to existing sub-container
+print(f'nested_test.sub_group has {len(opr.nested_test.sub_group)} OPs')
+
+# Test 10: Clean up test containers
+print('\nTest 10: Cleaning up test containers')
+opr._remove(['test_group', 'media_group', 'single_op', 'nested_test'])
+print('Test containers removed')
+
+print('\n=== Enhanced _add Functionality Tests Completed Successfully! ===')
 
 print('All tests completed successfully!')

@@ -101,69 +101,193 @@ class OPContainer(OPBaseWrapper):
     def is_root(self):
         return self._is_root or (self._parent is None and self._ownerComp is not None)
 
-    def _add(self, name, op):
-        '''
-        Looking for this usage:
-        opr = parent.src.OProxy
-        opr._add('Media', ['moviefilein1', 'moviefilein2'])
+    def _validate_child_name(self, container, name):
+        """Validate that a name can be used as a child in the given container"""
 
-        # Now this should be accessible
-        opr.Media should be accessible and contain the OPs 'moviefilein1' and 'moviefilein2'
+        # Reserved names that cannot be used as child names
+        reserved_names = {
+            # Internal attributes (current single underscore convention)
+            '_children', '_path', '_parent', '_ownerComp', '_is_root', '_op',
+            # Properties
+            'path', 'parent', 'is_root',
+            # Methods
+            '_add', '_remove', '_tree', '_refresh', '__save_to_storage', '__find_root',
+            '__build_storage_structure', '__load_nested_containers', '_validate_child_name',
+            # Magic methods
+            '__str__', '__repr__', '__len__', '__iter__', '__getitem__', '__call__',
+            '__getattr__', '__setattr__'
+        }
 
-        We need to create a new OPContainer based on 'name'
-        We need to make sure existing OPContainer item doesn't already exist if does just print 'already exists' and do nothing
-        Use td_isinstance() from utils for OP type checking
+        if name in reserved_names:
+            if name.startswith('__'):
+                raise ValueError(f"Magic method '{name}' cannot be used as child name. "
+                               f"Use _extend('{name}', monkey_patch=True) if really needed (future feature).")
+            elif name.startswith('_'):
+                raise ValueError(f"Internal name '{name}' is reserved. "
+                               f"Future versions will use double underscore convention (__{name[1:]}).")
+            else:
+                raise ValueError(f"Name '{name}' is reserved for {container.__class__.__name__} methods/properties")
 
-        Because OProxy is a dynamic based of the composite design pattern the idea is now that opr.Media
-        will also be an OPContainer that inherits all the OPBaseWrapper methods and properties
-        So user can do opr.Media._add('moviefilein3', 'moviefilein4') and so on...
-        '''
-        utils.log(f"DEBUG _add: Adding container '{name}' to path '{self.path}'")
+        # Check for conflicts with existing children types
+        if name in container._children:
+            existing_child = container._children[name]
+            if isinstance(existing_child, OPContainer):
+                # This is OK - we'll add to the existing container
+                pass
+            else:  # OPLeaf
+                raise ValueError(f"Name '{name}' already exists as an OP in '{container.path or 'root'}'")
 
-        # Check if container already exists
-        if name in self._children:
-            utils.log(f"DEBUG _add: Container '{name}' already exists - skipping")
-            return
+        return True
+
+    def _add_init(self, name, op):
+        """Create new container with initial OPs"""
+        utils.log(f"DEBUG _add_init: Creating new container '{name}'")
+
+        # Validate the container name
+        self._validate_child_name(self, name)
 
         # Normalize op parameter to list of OP objects
         if not isinstance(op, (list, tuple)):
             op_list = [op]
-            utils.log(f"DEBUG _add: Single OP provided, converted to list: {op}")
+            utils.log(f"DEBUG _add_init: Single OP provided, converted to list: {op}")
         else:
             op_list = op
-            utils.log(f"DEBUG _add: List of OPs provided, count: {len(op_list)}")
+            utils.log(f"DEBUG _add_init: List of OPs provided, count: {len(op_list)}")
 
-        # Validate and convert all OPs
+        # Validate and convert all OPs (fail fast on first invalid)
         validated_ops = []
         for i, op_item in enumerate(op_list):
-            utils.log(f"DEBUG _add: Validating OP {i+1}/{len(op_list)}: {op_item}")
-            validated_op = td_isinstance(op_item, 'op') # TouchDesigner OP Type Checking
-            validated_ops.append(validated_op)
-            utils.log(f"DEBUG _add: Validated OP: {validated_op.name} (path: {validated_op.path})")
+            utils.log(f"DEBUG _add_init: Validating OP {i+1}/{len(op_list)}: {op_item}")
+            try:
+                validated_op = td_isinstance(op_item, 'op') # TouchDesigner OP Type Checking
+                validated_ops.append(validated_op)
+                utils.log(f"DEBUG _add_init: Validated OP: {validated_op.name} (path: {validated_op.path})")
+            except Exception as e:
+                raise ValueError(f"Failed to validate OP '{op_item}': {e}")
 
         # Create new container with proper path
         child_path = f"{self.path}.{name}" if self.path else name
-        utils.log(f"DEBUG _add: Creating container with path '{child_path}'")
+        utils.log(f"DEBUG _add_init: Creating container with path '{child_path}'")
         container = OPContainer(path=child_path, parent=self)
 
         # Add validated OPs as leaves to the container
-        utils.log(f"DEBUG _add: Adding {len(validated_ops)} OPs as leaves to container '{name}'")
+        utils.log(f"DEBUG _add_init: Adding {len(validated_ops)} OPs as leaves to container '{name}'")
         for validated_op in validated_ops:
             leaf_path = f"{child_path}.{validated_op.name}"
-            utils.log(f"DEBUG _add: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
+            utils.log(f"DEBUG _add_init: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
             leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
             container._children[validated_op.name] = leaf
 
         # Add container to this container's children
-        utils.log(f"DEBUG _add: Adding container '{name}' to parent children dict")
+        utils.log(f"DEBUG _add_init: Adding container '{name}' to parent children dict")
         self._children[name] = container
 
-        utils.log(f"DEBUG _add: Successfully added container '{name}' with {len(validated_ops)} OPs")
+        utils.log(f"DEBUG _add_init: Successfully created container '{name}' with {len(validated_ops)} OPs")
 
         # Store in TouchDesigner storage by finding root and saving entire hierarchy
         root = self.__find_root()
         if hasattr(root, 'OProxies'):  # Ensure it's a proper root with storage
             root.__save_to_storage()
+
+        return container
+
+    def _add_insert(self, container, op):
+        """Add OPs to existing container"""
+        utils.log(f"DEBUG _add_insert: Adding to existing container '{container.path or 'root'}'")
+
+        # Normalize op parameter to list of OP objects
+        if not isinstance(op, (list, tuple)):
+            op_list = [op]
+            utils.log(f"DEBUG _add_insert: Single OP provided, converted to list: {op}")
+        else:
+            op_list = op
+            utils.log(f"DEBUG _add_insert: List of OPs provided, count: {len(op_list)}")
+
+        # Validate and convert all OPs (fail fast on first invalid)
+        validated_ops = []
+        added_count = 0
+
+        for i, op_item in enumerate(op_list):
+            utils.log(f"DEBUG _add_insert: Validating OP {i+1}/{len(op_list)}: {op_item}")
+            try:
+                validated_op = td_isinstance(op_item, 'op') # TouchDesigner OP Type Checking
+
+                # Check if OP already exists in container
+                if validated_op.name in container._children:
+                    utils.log(f"DEBUG _add_insert: OP '{validated_op.name}' already exists in container - skipping")
+                    continue
+
+                validated_ops.append(validated_op)
+                utils.log(f"DEBUG _add_insert: Validated OP: {validated_op.name} (path: {validated_op.path})")
+                added_count += 1
+
+            except Exception as e:
+                raise ValueError(f"Failed to validate OP '{op_item}': {e}")
+
+        # Add validated OPs as leaves to the existing container
+        if added_count > 0:
+            utils.log(f"DEBUG _add_insert: Adding {added_count} new OPs to existing container '{container.path or 'root'}'")
+            for validated_op in validated_ops:
+                leaf_path = f"{container.path}.{validated_op.name}" if container.path else validated_op.name
+                utils.log(f"DEBUG _add_insert: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
+                leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
+                container._children[validated_op.name] = leaf
+
+            utils.log(f"DEBUG _add_insert: Successfully added {added_count} OPs to container '{container.path or 'root'}'")
+
+            # Update TouchDesigner storage
+            root = self.__find_root()
+            if hasattr(root, 'OProxies'):
+                root.__save_to_storage()
+        else:
+            utils.log(f"DEBUG _add_insert: No new OPs to add to container '{container.path or 'root'}'")
+
+        return added_count
+
+    def _add(self, name, op):
+        '''
+        Add OPs to a container. Creates new container if it doesn't exist, or adds to existing container.
+
+        Usage examples:
+        opr = parent.src.OProxy
+
+        # Create new container with OPs
+        opr._add('Media', ['moviefilein1', 'moviefilein2'])
+        # Now opr.Media contains moviefilein1, moviefilein2
+
+        # Add more OPs to existing container
+        opr._add('Media', ['moviefilein3', 'moviefilein4'])
+        # Now opr.Media contains moviefilein1, moviefilein2, moviefilein3, moviefilein4
+
+        # Add single OP to existing container
+        opr._add('Media', 'moviefilein5')
+        # Now opr.Media contains all 5 moviefile OPs
+
+        Parameters:
+        - name: Container name (string)
+        - op: Single OP or list of OPs to add
+
+        Behavior:
+        - If container doesn't exist: Creates new container with provided OPs
+        - If container exists: Adds OPs to existing container (skips duplicates)
+        - If name conflicts with existing OP: Raises ValueError
+        - Reserved names (methods, properties, magic methods): Raises ValueError
+
+        Future: Use _extend() for monkey patching magic methods
+        '''
+        utils.log(f"DEBUG _add: Processing '{name}' in container '{self.path or 'root'}'")
+
+        # Check if container already exists
+        if name in self._children:
+            existing = self._children[name]
+            if isinstance(existing, OPContainer):
+                utils.log(f"'{name}' OPContainer already exists - adding to existing container")
+                self._add_insert(existing, op)
+            else:
+                raise ValueError(f"Cannot add container '{name}' - already exists as OP in '{self.path or 'root'}'")
+        else:
+            # Create new container
+            self._add_init(name, op)
 
     def __find_root(self):
         """Internal method: Traverse up parent chain to find root container."""
