@@ -1,5 +1,6 @@
 # Ignore files matching oproxy.<number>.toe
 oproxy.*.toe
+.cursorignore
 
 # Ignore files containing CrashAutoSave or TouchDesignerCrash
 *CrashAutoSave*
