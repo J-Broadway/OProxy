@@ -2,6 +2,63 @@
 import td
 
 
+def store(container, storage_dict, parent_path=""):
+    """
+    Store an OPContainer into the TouchDesigner storage structure.
+
+    Args:
+        container: OPContainer to store
+        storage_dict: The root storage dict (e.g., self.OProxies)
+        parent_path: Path to parent container (empty string for root level)
+    """
+    if not hasattr(container, '_children'):
+        raise TypeError("Object must be an OPContainer with _children attribute")
+
+    # Build the container's storage representation
+    container_data = {
+        'extensions': {},
+        'ops': {},       # For OPs in this container
+        'children': {},  # For nested containers
+    }
+
+    # Process all children
+    for name, child in container._children.items():
+        if hasattr(child, '_op'):  # This is an OPLeaf
+            # Store OP path directly
+            container_data['ops'][name] = child._op.path
+        elif hasattr(child, '_children'):  # This is a nested OPContainer
+            # Recursively store nested container
+            nested_storage = storage_dict
+            if parent_path:
+                # Navigate to the parent location in storage
+                path_parts = parent_path.split('.')
+                for part in path_parts:
+                    if part not in nested_storage['children']:
+                        nested_storage['children'][part] = {'children': {}, 'ops': {}, 'extensions': []}
+                    nested_storage = nested_storage['children'][part]
+
+            # Store the nested container
+            store(child, nested_storage, f"{parent_path}.{name}" if parent_path else name)
+
+    # Store this container in the appropriate location
+    if parent_path:
+        # Navigate to parent location and store
+        current_dict = storage_dict
+        path_parts = parent_path.split('.')
+
+        # Create path if it doesn't exist
+        for part in path_parts:
+            if part not in current_dict['children']:
+                current_dict['children'][part] = {'children': {}, 'ops': {}, 'extensions': []}
+            current_dict = current_dict['children'][part]
+
+        # Store the container data
+        current_dict['children'][container.path.split('.')[-1]] = container_data
+    else:
+        # Root level storage
+        storage_dict['children'][container.path or 'root'] = container_data
+
+
 def td_isinstance(value, expected_type, allow_string=True):
     """
     Centralized TouchDesigner type checking and validation with string path support.

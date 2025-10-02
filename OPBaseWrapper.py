@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 import td
 from utils import td_isinstance
 
+# Import utils module for storage functions
+utils = mod('utils')
+
 class OPBaseWrapper(ABC):
     """Abstract Component: Common interface for leaves and composites."""
 
@@ -153,9 +156,9 @@ class OPContainer(OPBaseWrapper):
 
         print(f"DEBUG _add: Successfully added container '{name}' with {len(validated_ops)} OPs")
 
-        # Storage persistence will be added later
-        # if self.is_root:
-        #     self.__save_to_storage()
+        # Store in TouchDesigner storage if this is root
+        if self.is_root:
+            utils.store(container, self.OProxies, self.path)
 
     def _remove(self, name):
         if name in self._children:
@@ -173,10 +176,10 @@ class OPContainer(OPBaseWrapper):
     def __getattr__(self, name):
         if name in self._children:
             return self._children[name]
-        if len(self._children) == 1:  # Delegate to single child
-            return getattr(list(self._children.values())[0], name)
-        # Delegate to all children (return list of results)
-        return [getattr(child, name) for child in self._children.values()]
+        # Strict mode: raise error for non-existent containers/attributes
+        # instead of confusing delegation behavior
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'. "
+                           f"Use _add() to create containers or access existing ones: {list(self._children.keys())}")
 
     def __setattr__(self, name, value):
         if name.startswith('_') or name in ('_children', '_ownerComp'):

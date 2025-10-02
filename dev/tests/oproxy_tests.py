@@ -1,6 +1,7 @@
 opr = parent.src.OProxy
 
 # _add tests
+opr._add('items', ['op1','op2','op3']) # Create OPContainer Item
 
 # Test container length
 print('OPContainer Length:', len(opr.items))
@@ -16,7 +17,7 @@ for i in opr.items:
 	i.par.playmode = 0
 
 # Test getting parameters from all items
-print('Current playmode values:')
+print('Current playmode values (should be locked):')
 for i in opr.items:
 	print(f'  {i.name}.par.playmode is {i.par.playmode}')
 
