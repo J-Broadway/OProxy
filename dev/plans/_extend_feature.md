@@ -14,46 +14,102 @@ The `_extend()` method enables dynamic extension of OProxy containers and leafs 
 
 ## Architecture Decisions
 
-### 1. **No Automatic Inheritance**
+### 1. **Factory Template Pattern**
+- **Decision**: All extensions inherit from `OProxyExtension` factory template
+- **Rationale**: Solves serialization issues, provides consistent interface, enables type checking
+- **Benefits**: No need to serialize complex Python objects, automatic metadata tracking, consistent API
+
+### 2. **No Automatic Inheritance**
 - **Decision**: Framework does NOT automatically walk parent chains for extensions
 - **Rationale**: Keeps core architecture predictable and simple
 - **Implementation**: Manual inheritance patterns documented for advanced users
 
-### 2. **Binding Model**
+### 3. **Binding Model**
 - **Container Extensions**: `self` refers to the OPContainer instance
 - **Leaf Extensions**: `self` refers to the OPLeaf instance
 - **Consistency**: Same extraction/binding logic for both, different `self` context
 
-### 3. **Storage Structure**
+### 4. **OProxyExtension Factory Template**
 ```python
-# Root level storage structure
+class OProxyExtension:
+    """Factory template for all OProxy extensions. Provides consistent interface and metadata."""
+
+    def __init__(self, actual_obj, parent, source_dat=None, metadata=None):
+        self._actual = actual_obj  # The extracted class/function
+        self._parent = parent      # Parent container/leaf for type checking
+        self._source_dat = source_dat
+        self._metadata = metadata or {}
+
+        # Dynamically copy attributes from the actual object
+        for attr_name in dir(actual_obj):
+            if not attr_name.startswith('_'):  # Skip private attributes
+                attr = getattr(actual_obj, attr_name)
+                setattr(self, attr_name, attr)
+
+    def __getattr__(self, name):
+        """Delegate attribute access to the actual object"""
+        return getattr(self._actual, name)
+
+    def __call__(self, *args, **kwargs):
+        """Allow calling if the actual object is callable"""
+        return self._actual(*args, **kwargs)
+
+    @property
+    def extension_info(self):
+        """Access metadata about this extension"""
+        return {
+            'source_dat': self._source_dat,
+            'parent': self._parent,
+            'metadata': self._metadata
+        }
+```
+
+### 5. **Storage Structure**
+```python
+# Root level storage structure - only metadata stored, no objects
 {
     'children': {
         'container_name': {
             'children': {...},  # Nested containers
             'ops': {...},       # OP paths
-            'extensions': {     # NEW: Extension storage
+            'extensions': {     # Extension metadata only
                 'extension_name': {
                     'cls': 'ClassName' | None,
                     'func': 'funcName' | None,
                     'dat_path': '/path/to/dat',
                     'call': False,
                     'args': None,
-                    'monkey_patch': False
+                    'monkey_patch': False,
+                    'created_at': 1640995200.0
                 }
             }
         }
     },
-    'extensions': {}  # Root-level extensions
+    'extensions': {}  # Root-level extension metadata
 }
 ```
 
-### 4. **Loading Order**
+### 6. **Loading Order**
 Extensions load AFTER complete container/OP structure:
 1. Create containers
 2. Load OPs into containers
 3. Load nested containers
-4. **Load extensions** (new step)
+4. **Load extensions**: Re-extract objects from DATs and wrap in `OProxyExtension` factory template
+
+### 7. **Type Checking & Introspection**
+All extensions inherit from `OProxyExtension`, enabling:
+```python
+opr.media._extend('myExtension', cls='MyClass', dat=me)
+type(opr.media.myExtension)  # -> <class 'OProxyExtension'>
+isinstance(opr.media.myExtension, OProxyExtension)  # -> True
+
+# Check parent relationships
+opr.media.myExtension._parent  # -> media container
+
+# Access extension metadata
+info = opr.media.myExtension.extension_info
+print(f"From DAT: {info['source_dat'].path}")
+```
 
 ## API Specification
 
@@ -89,11 +145,12 @@ def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=Fals
 ## Implementation Plan
 
 ### Phase 1: Core Implementation
-1. **Add `_extend()` method to `OPBaseWrapper`** (abstract)
-2. **Implement in `OPContainer`** with container binding
-3. **Implement in `OPLeaf`** with leaf binding
-4. **Add extension storage logic** to `__build_storage_structure()`
-5. **Add extension loading logic** to `_refresh()`
+1. **Create `OProxyExtension` factory template class**
+2. **Add `_extend()` method to `OPBaseWrapper`** (abstract)
+3. **Implement in `OPContainer`** with container binding and `OProxyExtension` wrapping
+4. **Implement in `OPLeaf`** with leaf binding and `OProxyExtension` wrapping
+5. **Add extension storage logic** to `__build_storage_structure()` (metadata only)
+6. **Add extension loading logic** to `_refresh()` (re-extract and re-wrap)
 
 ### Phase 2: Error Handling & Validation
 1. **Naming conflict detection** with `monkey_patch` handling
@@ -258,18 +315,30 @@ def advanced_effect(self):
 ## Storage & Persistence
 
 ### Extension Storage Logic
-- Extensions stored alongside containers in TouchDesigner storage
+- **Only metadata stored** in TouchDesigner storage (not actual objects)
+- Extensions automatically inherit `OProxyExtension` factory template on reload
 - Storage happens automatically after successful extension
-- Extensions reload during `_refresh()` after structure is built
+- Extensions reload during `_refresh()` by re-extracting from DATs and re-wrapping
 
 ### Storage Update Flow
 ```python
 def _extend(self, ...):
-    # Extract and validate
-    # Bind to object
-    # Store in self.__dict__ with special prefix
-    # Update TouchDesigner storage
-    # Return self
+    # Extract actual object from DAT
+    actual_obj = ast_mod.Main(cls=cls, func=func, op=dat)
+
+    # Create metadata for serialization
+    metadata = {
+        'cls': cls, 'func': func, 'dat_path': dat.path,
+        'args': args, 'call': call, 'created_at': time.time()
+    }
+
+    # Wrap in factory template
+    extension = OProxyExtension(actual_obj, self, dat, metadata)
+
+    # Store extension and update storage with metadata only
+    self._extensions[attr_name] = extension
+    self._update_storage_extension(attr_name, metadata)
+    return self
 ```
 
 ### Reload Flow
@@ -277,8 +346,22 @@ def _extend(self, ...):
 def _refresh(self):
     # Build container structure
     # Build OP structure
-    # Load extensions from storage
-    # Re-apply extensions to objects
+
+    # Load extensions from storage metadata
+    for ext_name, metadata in stored_extensions.items():
+        # Re-extract the actual object
+        actual_obj = ast_mod.Main(
+            cls=metadata['cls'],
+            func=metadata['func'],
+            op=metadata['dat_path']
+        )
+
+        # Re-wrap in factory template (automatic inheritance!)
+        extension = OProxyExtension(actual_obj, self,
+                                  source_dat=metadata['dat_path'],
+                                  metadata=metadata)
+
+        setattr(self, ext_name, extension)
 ```
 
 ## Error Handling & Validation
@@ -312,12 +395,13 @@ def _refresh(self):
 ## Implementation Checklist
 
 ### Core Implementation
+- [ ] Create `OProxyExtension` factory template class
 - [ ] Add `_extend()` to `OPBaseWrapper` (abstract)
-- [ ] Implement `_extend()` in `OPContainer`
-- [ ] Implement `_extend()` in `OPLeaf`
-- [ ] Update `__build_storage_structure()` for extensions
-- [ ] Update `_refresh()` for extension loading
-- [ ] Update `utils.py` storage functions
+- [ ] Implement `_extend()` in `OPContainer` with `OProxyExtension` wrapping
+- [ ] Implement `_extend()` in `OPLeaf` with `OProxyExtension` wrapping
+- [ ] Update `__build_storage_structure()` for extension metadata storage
+- [ ] Update `_refresh()` for extension reloading (re-extract + re-wrap)
+- [ ] Update `utils.py` storage functions for metadata-only storage
 
 ### Validation & Error Handling
 - [ ] Parameter validation logic
@@ -335,6 +419,8 @@ def _refresh(self):
 
 ## Conclusion
 
-The `_extend()` feature provides a powerful yet clean way to extend OProxy objects with reusable functionality. By keeping automatic inheritance out of the core and providing comprehensive validation, the feature maintains architectural simplicity while enabling advanced usage patterns through documentation and examples.
+The `_extend()` feature provides a powerful yet clean way to extend OProxy objects with reusable functionality. The `OProxyExtension` factory template pattern elegantly solves serialization issues by storing only metadata while ensuring all extensions automatically inherit consistent interfaces and type-checking capabilities.
 
-The design balances flexibility, safety, and maintainability, making it suitable for both simple extensions and complex, reusable component systems.
+By keeping automatic inheritance out of the core, providing comprehensive validation, and using the factory template approach, the feature maintains architectural simplicity while enabling advanced usage patterns through documentation and examples.
+
+The design balances flexibility, safety, and maintainability, making it suitable for both simple extensions and complex, reusable component systems while providing robust type checking and introspection capabilities.
