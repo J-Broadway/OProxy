@@ -8,4 +8,5 @@ oproxy.*.toe
 # Ignore folders named Backup
 Backup/
 .cursor/
-planning/
+dev/
+__pycache__/
