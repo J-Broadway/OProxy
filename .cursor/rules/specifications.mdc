@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+
+OProxy is an operator proxy system for TouchDesigner
+Adhere to Composite Design Pattern Principals 
+
+When in doubt default to asking user for question, clarification, direction
+
+Please take note that you do not have access to TouchDesigner specific python libraries such as mod()
