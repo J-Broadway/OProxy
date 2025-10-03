@@ -519,6 +519,44 @@ class OPContainer(OPBaseWrapper):
         """Public method to save the container hierarchy to storage."""
         self.__save_to_storage()
 
+    def _update_storage(self):
+        """Update storage with current container's data (incremental update)."""
+        if not self.is_root:
+            raise RuntimeError("_update_storage() can only be called on root containers")
+
+        try:
+            # Rebuild this container's complete storage structure
+            container_data = self.__build_storage_structure()
+
+            # For root container, replace entire children structure
+            self.OProxies['children'] = container_data
+
+            utils.log("DEBUG _update_storage: Updated storage for root container")
+
+        except Exception as e:
+            utils.log(f"ERROR _update_storage: Failed to update storage: {e}")
+            raise
+
+    def _update_container_in_storage(self, container_data):
+        """Update a specific container's data in root storage (called by non-roots)."""
+        if self.is_root:
+            # Root calls _update_storage() directly
+            return self._update_storage()
+
+        # Find root and update specific container location
+        root = self.__find_root()
+        if not hasattr(root, 'OProxies'):
+            return
+
+        # Navigate to parent location in storage
+        path_segments = self.path.split('.')
+        parent_path = '.'.join(path_segments[:-1])  # Parent container path
+        container_name = path_segments[-1]  # This container's name
+
+        # For simplicity, trigger full root update for now
+        # TODO: Implement true incremental update navigation
+        root._update_storage()
+
     def __build_storage_structure(self):
         """Recursively build the nested storage structure from container hierarchy."""
         result = {}
