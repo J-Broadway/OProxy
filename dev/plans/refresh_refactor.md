@@ -165,20 +165,120 @@ def _refresh(self, target=None):
 - Mixed success/failure cases
 - Performance testing with large hierarchies
 
-## Usage Examples (After Implementation)
+## Usage Examples with Execution Flow (After Implementation)
+
+### Root Refresh (Existing Behavior)
+```python
+opr._refresh()  # Full hierarchy refresh
+```
+
+**Execution Flow:**
+```
+opr (OPContainer)._refresh()
+├── _refresh_ops()           # Check OPs in root container
+├── _refresh_extensions()    # Refresh root extensions (placeholder)
+├── media._refresh()         # Recursive call to child container
+│   ├── _refresh_ops()       # Check OPs in media container
+│   ├── _refresh_extensions() # Refresh media extensions (placeholder)
+│   ├── movie1._refresh()    # Recursive call to child leaf
+│   │   └── _refresh_extensions() # Refresh movie1 extensions
+│   └── movie2._refresh()    # Recursive call to child leaf
+│       └── _refresh_extensions() # Refresh movie2 extensions
+├── audio._refresh()         # Recursive call to sibling container
+│   └── ... (similar flow)
+└── _update_storage()        # Save entire hierarchy to storage
+```
+
+### Branch Refresh (New)
+```python
+opr.media._refresh()  # Refresh entire 'media' branch only
+```
+
+**Execution Flow:**
+```
+opr.media (OPContainer)._refresh()
+├── _refresh_ops()           # Check OPs directly in media container
+├── _refresh_extensions()    # Refresh media container extensions
+├── media.movie1._refresh()  # Recursive call to child leaf
+│   └── _refresh_extensions() # Refresh movie1 extensions
+├── media.effects._refresh() # Recursive call to child container
+│   ├── _refresh_ops()       # Check OPs in effects container
+│   ├── _refresh_extensions() # Refresh effects extensions
+│   ├── effects.blur._refresh() # Recursive call to grandchild leaf
+│   │   └── _refresh_extensions() # Refresh blur extensions
+│   └── effects.glow._refresh() # Recursive call to grandchild leaf
+│       └── _refresh_extensions() # Refresh glow extensions
+└── _update_storage()        # Find root and update storage
+```
+
+### Leaf Refresh (New)
+```python
+opr.media('movie1')._refresh()  # Refresh extensions on specific OP
+```
+
+**Execution Flow:**
+```
+opr.media('movie1') (OPLeaf)._refresh()
+└── _refresh_extensions()    # Refresh extensions attached to movie1
+                               # No recursion (leaves have no children)
+                               # No storage update (leaf changes don't affect hierarchy)
+```
+
+### Specific Target from Root (Future Enhancement)
+```python
+opr._refresh('media')  # Refresh specific branch from root
+```
+
+**Execution Flow:**
+```
+opr (OPContainer)._refresh('media')
+├── Find 'media' in _children
+├── Delegate to: media._refresh()  # Same as opr.media._refresh()
+└── No full hierarchy refresh
+```
+
+### OP Name Change Detection Example
+
+**Scenario:** User renames `movie1` to `background_movie` in TouchDesigner
+
+**Before Refresh:**
+```python
+opr.media._children = {'movie1': <OPLeaf>}
+# Storage: {'movie1': {'op': <OP object>, 'path': '/project/movie1', ...}}
+```
+
+**During Refresh:**
+```python
+media._refresh_ops()
+├── Load stored data for 'movie1'
+├── stored_op.name = 'background_movie'  # OP was renamed!
+├── stored_key ('movie1') != current_name ('background_movie')
+├── Update mapping: del _children['movie1']
+├── Add _children['background_movie'] = <OPLeaf>
+└── Update OPLeaf._path to 'media.background_movie'
+```
+
+**After Refresh:**
+```python
+opr.media._children = {'background_movie': <OPLeaf>}
+# API now works: opr.media('background_movie').name  # Returns correctly
+```
+
+### Error Handling Example
+
+**Scenario:** One OP is missing, others work fine
 
 ```python
-# Root refresh (existing behavior)
-opr._refresh()
-
-# Branch refresh (new)
-opr.media._refresh()        # Refresh entire 'media' branch
-
-# Leaf refresh (new)
-opr.media('movie1')._refresh()  # Refresh extensions on movie1
-
-# Specific target from root (future enhancement)
-opr._refresh('media')       # Refresh 'media' branch from root
+opr.media._refresh()
+├── _refresh_ops()
+│   ├── 'movie1' OP exists ✓ → update if renamed
+│   ├── 'movie2' OP missing ✗ → log error, remove from container
+│   └── 'movie3' OP exists ✓ → update if renamed
+├── _refresh_extensions() ✓
+├── movie1._refresh() ✓
+├── movie2._refresh() ✓ (but OP was removed)
+└── _update_storage() ✓
+# Result: Partial success, missing OP logged but doesn't break refresh
 ```
 
 ## Files Requiring Changes
