@@ -31,6 +31,7 @@ The current OProxy storage architecture stores OPs as simple string paths, but t
             'ops': {                  # ✅ Objects with path + extensions
                 'op1': {
                     'path': '/project1/op1',
+                    'op': <OP object>,    # Raw OP object for name change detection
                     'extensions': {
                         'custom_method': {
                             'cls': None,
@@ -44,7 +45,8 @@ The current OProxy storage architecture stores OPs as simple string paths, but t
                 },
                 'op2': {
                     'path': '/project1/op2',
-                    'extensions': {}    # Empty extensions dict
+                    'op': <OP object>,    # Raw OP object for name change detection
+                    'extensions': {}      # Empty extensions dict
                 }
             },
             'extensions': {           # Container extensions
@@ -66,13 +68,18 @@ The current OProxy storage architecture stores OPs as simple string paths, but t
 
 ### 1. OP Storage Structure
 - **Before**: `'ops': {'op_name': 'op_path'}`
-- **After**: `'ops': {'op_name': {'path': 'op_path', 'extensions': {...}}}`
+- **After**: `'ops': {'op_name': {'path': 'op_path', 'op': <OP object>, 'extensions': {...}}}`
 
 ### 2. Extension Storage Levels
 - **Container Level**: `container['extensions']` - applies to OPContainer
 - **Leaf Level**: `container['ops']['op_name']['extensions']` - applies to individual OPLeaf
 
-### 3. Backward Compatibility
+### 3. Name Change Detection
+- **Raw OP Storage**: Store raw OP objects to enable `stored_key != stored_op.name` comparison
+- **Automatic Updates**: OP objects automatically reflect path/name changes when TouchDesigner renames OPs
+- **Container Updates**: During `_refresh()`, detect name changes and update container mappings accordingly
+
+### 4. Backward Compatibility
 - Since you're the only developer, we can break existing storage format
 - Clean migration: clear existing storage and rebuild with new structure
 
@@ -96,9 +103,10 @@ for op_name, op_child in child._children.items():
 # Add OPs from this container
 for op_name, op_child in child._children.items():
     if hasattr(op_child, '_op'):  # It's an OPLeaf
-        # Create OP object with path and extensions
+        # Create OP object with path, raw OP, and extensions
         op_data = {
             'path': op_child._op.path,
+            'op': op_child._op,  # Store raw OP object for name change detection
             'extensions': getattr(op_child, '_extensions', {})  # Will be added by _extend()
         }
         container_data['ops'][op_name] = op_data
@@ -128,16 +136,35 @@ for op_name, op_info in ops_data.items():
     if isinstance(op_info, str):
         # Legacy format support (simple path string)
         op_path = op_info
+        stored_op = None
         op_extensions = {}
     else:
-        # New format (object with path and extensions)
+        # New format (object with path, raw OP, and extensions)
         op_path = op_info.get('path', '')
+        stored_op = op_info.get('op')  # Raw OP object for name change detection
         op_extensions = op_info.get('extensions', {})
 
     utils.log(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
-    op = td.op(op_path)
+
+    # Try to get OP by stored path first
+    op = td.op(op_path) if op_path else None
+
+    # If that fails but we have a stored OP object, use it (handles renames)
+    if not (op and op.valid) and stored_op and stored_op.valid:
+        op = stored_op
+        utils.log(f"DEBUG _refresh: Using stored OP object for '{op_name}' (original path may have changed)")
+
     if op and op.valid:
-        leaf_path = f"{container_path}.{op_name}"
+        # Check for name changes
+        current_name = op.name
+        if op_name != current_name:
+            utils.log(f"DEBUG _refresh: OP name changed from '{op_name}' to '{current_name}', updating mapping")
+            # Use current name as key instead of stored name
+            actual_key = current_name
+        else:
+            actual_key = op_name
+
+        leaf_path = f"{container_path}.{actual_key}"
         leaf = OPLeaf(op, path=leaf_path, parent=container)
 
         # Load extensions onto the leaf
@@ -148,7 +175,9 @@ for op_name, op_info in ops_data.items():
                 # TODO: Apply extension logic here
                 pass
 
-        container._children[op_name] = leaf
+        container._children[actual_key] = leaf
+    else:
+        utils.log(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid, skipping")
 ```
 
 #### 1.3 Update `utils.store()`
@@ -168,9 +197,10 @@ for name, child in container._children.items():
 # Process all children
 for name, child in container._children.items():
     if hasattr(child, '_op'):  # This is an OPLeaf
-        # Store OP as object with path and extensions
+        # Store OP as object with path, raw OP, and extensions
         op_data = {
             'path': child._op.path,
+            'op': child._op,  # Store raw OP object for name change detection
             'extensions': getattr(child, '_extensions', {})
         }
         container_data['ops'][name] = op_data
@@ -218,6 +248,7 @@ Call migration during root initialization if old format detected
 
 #### 4.3 Backward Compatibility Tests
 - Test migration from old to new format
+- Update `expected` variables in `oproxy_tests.py` to match new storage structure
 - Ensure existing tests still pass
 
 ## Implementation Checklist
@@ -239,7 +270,9 @@ Call migration during root initialization if old format detected
 - [ ] Test migration from old to new format
 
 ### Testing
+- [ ] Update `expected` variables in `oproxy_tests.py` to match new OP object structure
 - [ ] Update existing tests to work with new storage
+- [ ] Add tests for name change detection during `_refresh()`
 - [ ] Add tests for extension storage/loading
 - [ ] Add tests for nested OP object structure
 - [ ] Verify persistence across project reloads
@@ -287,10 +320,11 @@ Call migration during root initialization if old format detected
 
 ## Next Steps
 
-1. **Implement Phase 1**: Core storage structure changes
-2. **Test Storage**: Verify new structure works without extensions
-3. **Implement Phase 2**: Extension infrastructure
-4. **Implement Migration**: Handle transition from old format
-5. **Implement _extend()**: Build on top of new storage architecture
+1. **Update Storage Structure**: Implement the new OP object format with 'path', 'op', and 'extensions' fields
+2. **Implement Name Change Detection**: Add logic in `_refresh()` to detect when `stored_key != stored_op.name` and update container mappings
+3. **Update Tests**: Modify `expected` variables in `oproxy_tests.py` to match the new storage structure with OP objects
+4. **Test Storage Persistence**: Verify OP objects survive project reloads and enable name change detection
+5. **Implement Migration**: Handle transition from old string-based format to new object format
+6. **Add Extension Infrastructure**: Implement `_extensions` attribute and extension re-application during refresh
 
 This refactor establishes the foundation for `_extend()` functionality while maintaining all existing OProxy capabilities.
