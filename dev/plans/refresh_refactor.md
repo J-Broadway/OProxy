@@ -131,6 +131,16 @@ def _refresh(self, target=None):
   - Compare stored key vs current OP name
   - Update container mapping if name changed
   - Update OPLeaf path if necessary
+- Handle cascading path updates for child containers (placeholder for future _rename() implementation)
+
+**Path Update Placeholder:**
+```python
+# TODO: Future _rename() implementation will handle cascading path updates
+# When a container name changes, all child paths need updating:
+# - Child container paths: 'old_name.child' -> 'new_name.child'
+# - Child OPLeaf paths: 'old_name.op' -> 'new_name.op'
+# For now, we update individual OPLeaf paths but rely on _rename() for full cascading
+```
 
 **`_refresh_extensions(self, target=None)`**
 - Placeholder for extension refresh logic
@@ -139,6 +149,33 @@ def _refresh(self, target=None):
 **`_get_stored_container_data(self)`**
 - Navigate storage structure to find this container's data
 - Handle nested storage hierarchy
+- Traverse from root storage using container path segments
+- Return container data dict or None if not found
+
+**Implementation Logic:**
+```python
+def _get_stored_container_data(self):
+    """Navigate storage hierarchy to find data for this container."""
+    if self.is_root:
+        return self.OProxies.get('children', {})
+
+    # For non-root containers, traverse path from root
+    root = self.__find_root()
+    if not hasattr(root, 'OProxies'):
+        return None
+
+    path_segments = self.path.split('.')
+    current_data = root.OProxies.get('children', {})
+
+    # Navigate down the hierarchy following path segments
+    for segment in path_segments[1:]:  # Skip root segment
+        if segment in current_data and isinstance(current_data[segment], dict):
+            current_data = current_data[segment].get('children', {})
+        else:
+            return None  # Path not found in storage
+
+    return current_data
+```
 
 ### Phase 2: Error Handling & Validation
 
