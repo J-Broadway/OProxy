@@ -367,8 +367,8 @@ class OPContainer(OPBaseWrapper):
                            f"Use _add() to create containers or access existing ones: {list(self._children.keys())}")
 
     def __setattr__(self, name, value):
-        if name.startswith('_') or name in ('_children', '_ownerComp'):
-            super().__setattr__(name, value)
+        if name.startswith('_') or name in ('_children', '_ownerComp', 'OProxies'):
+            object.__setattr__(self, name, value)  # Bypass OPBaseWrapper's restriction
         else:
             for child in self._children.values():
                 setattr(child, name, value)
@@ -410,9 +410,17 @@ class OPContainer(OPBaseWrapper):
 
         # Build the complete nested storage structure
         children_data = self.__build_storage_structure()
-        self.OProxies['children'] = children_data
+
+        # Clear existing children and update with new data
+        # This modifies the existing dictionary object rather than replacing it
+        self.OProxies['children'].clear()
+        self.OProxies['children'].update(children_data)
 
         utils.log(f"DEBUG __save_to_storage: Saved {len(children_data)} top-level containers to storage")
+
+    def _save_to_storage(self):
+        """Public method to save the container hierarchy to storage."""
+        self.__save_to_storage()
 
     def __build_storage_structure(self):
         """Recursively build the nested storage structure from container hierarchy."""

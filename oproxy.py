@@ -27,7 +27,7 @@ class root(OPContainer):
                 'name': 'OProxies',
                 'default': {
                             'children': {},
-                            'extensions': [],
+                            'extensions': {},
                             },
                 'dependable': True
             }
@@ -38,4 +38,9 @@ class root(OPContainer):
         self._refresh()  # Load persisted hierarchy from storage
         utils.log("OProxy root initialized")
 
-    
+    def _clear(self):
+        """Clear all stored OProxy data and reload empty hierarchy."""
+        self.OProxies = {'children': {}, 'extensions': {}}
+        self._refresh()  # Reload from the now-empty storage
+
+
