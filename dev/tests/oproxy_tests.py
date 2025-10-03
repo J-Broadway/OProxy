@@ -15,11 +15,29 @@ def passed(test, test_name, msg):
 			raise ValueError('\n STORAGE INCONGRUENCY \n')
 		raise(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
 
+def normalize_storage_for_comparison(storage):
+    """Normalize storage by replacing OP objects with placeholders for comparison."""
+    if isinstance(storage, dict):
+        normalized = {}
+        for key, value in storage.items():
+            if key == 'op' and hasattr(value, 'name'):  # It's an OP object
+                normalized[key] = "<OP_OBJECT>"
+            else:
+                normalized[key] = normalize_storage_for_comparison(value)
+        return normalized
+    elif isinstance(storage, list):
+        return [normalize_storage_for_comparison(item) for item in storage]
+    else:
+        return storage
+
 def current_storage(msg=None):
 	current_storage = parent.src.fetch('rootStored').getRaw()
 	if msg:
-		print(f'\n{msg} --> {json.dumps(current_storage, indent=2)}\n')
-	return current_storage
+		# Normalize for JSON serialization before printing
+		normalized_for_print = normalize_storage_for_comparison(current_storage)
+		print(f'\n{msg} --> {json.dumps(normalized_for_print, indent=2)}\n')
+	return normalize_storage_for_comparison(current_storage)
+	
 # Clear storage first
 opr._clear()
 mvs = ['op1','op2','op3']
@@ -30,16 +48,16 @@ opr._add('items', mvs) # Create OPContainer Item
 # Verify storage after add
 current_storage('Storage after _add')
 
-# Hardcoded expected storage
+# Hardcoded expected storage (normalized for comparison - OP objects become placeholders)
 expected = {
   "OProxies": {
     "children": {
       "items": {
         "children": {},
         "ops": {
-          "op1": "/project1/myProject/op1",
-          "op2": "/project1/myProject/op2",
-          "op3": "/project1/myProject/op3"
+          "op1": {"path": "/project1/myProject/op1", "op": "<OP_OBJECT>", "extensions": {}},
+          "op2": {"path": "/project1/myProject/op2", "op": "<OP_OBJECT>", "extensions": {}},
+          "op3": {"path": "/project1/myProject/op3", "op": "<OP_OBJECT>", "extensions": {}}
         },
         "extensions": {}
       }
@@ -73,26 +91,62 @@ expected = {
           "nest": {
             "children": {},
             "ops": {
-              "op1": "/project1/myProject/op1",
-              "op2": "/project1/myProject/op2",
-              "op3": "/project1/myProject/op3"
+              "op1": {
+                "path": "/project1/myProject/op1",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op2": {
+                "path": "/project1/myProject/op2",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op3": {
+                "path": "/project1/myProject/op3",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              }
             },
             "extensions": {}
           },
           "second_nest": {
             "children": {},
             "ops": {
-              "op1": "/project1/myProject/op1",
-              "op2": "/project1/myProject/op2",
-              "op3": "/project1/myProject/op3"
+              "op1": {
+                "path": "/project1/myProject/op1",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op2": {
+                "path": "/project1/myProject/op2",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op3": {
+                "path": "/project1/myProject/op3",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              }
             },
             "extensions": {}
           }
         },
         "ops": {
-          "op1": "/project1/myProject/op1",
-          "op2": "/project1/myProject/op2",
-          "op3": "/project1/myProject/op3"
+          "op1": {
+            "path": "/project1/myProject/op1",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          },
+          "op2": {
+            "path": "/project1/myProject/op2",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          },
+          "op3": {
+            "path": "/project1/myProject/op3",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          }
         },
         "extensions": {}
       }
@@ -119,24 +173,52 @@ expected = {
           "nest": {
             "children": {},
             "ops": {
-              "op1": "/project1/myProject/op1",
-              "op2": "/project1/myProject/op2",
-              "op3": "/project1/myProject/op3"
+              "op1": {
+                "path": "/project1/myProject/op1",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op2": {
+                "path": "/project1/myProject/op2",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op3": {
+                "path": "/project1/myProject/op3",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              }
             },
             "extensions": {}
           },
           "second_nest": {
             "children": {},
             "ops": {
-              "op1": "/project1/myProject/op1",
-              "op2": "/project1/myProject/op2",
-              "op3": "/project1/myProject/op3"
+              "op1": {
+                "path": "/project1/myProject/op1",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op2": {
+                "path": "/project1/myProject/op2",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op3": {
+                "path": "/project1/myProject/op3",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              }
             },
             "extensions": {}
           }
         },
         "ops": {
-          "op2": "/project1/myProject/op2"
+          "op2": {
+            "path": "/project1/myProject/op2",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          }
         },
         "extensions": {}
       }
@@ -160,32 +242,72 @@ expected = {
               "ANOTHER_NEST": {
                 "children": {},
                 "ops": {
-                  "op1": "/project1/myProject/op1",
-                  "op2": "/project1/myProject/op2",
-                  "op3": "/project1/myProject/op3"
+                  "op1": {
+                    "path": "/project1/myProject/op1",
+                    "op": "<OP_OBJECT>",
+                    "extensions": {}
+                  },
+                  "op2": {
+                    "path": "/project1/myProject/op2",
+                    "op": "<OP_OBJECT>",
+                    "extensions": {}
+                  },
+                  "op3": {
+                    "path": "/project1/myProject/op3",
+                    "op": "<OP_OBJECT>",
+                    "extensions": {}
+                  }
                 },
                 "extensions": {}
               }
             },
             "ops": {
-              "op1": "/project1/myProject/op1",
-              "op2": "/project1/myProject/op2",
-              "op3": "/project1/myProject/op3"
+              "op1": {
+                "path": "/project1/myProject/op1",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op2": {
+                "path": "/project1/myProject/op2",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op3": {
+                "path": "/project1/myProject/op3",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              }
             },
             "extensions": {}
           },
           "second_nest": {
             "children": {},
             "ops": {
-              "op1": "/project1/myProject/op1",
-              "op2": "/project1/myProject/op2",
-              "op3": "/project1/myProject/op3"
+              "op1": {
+                "path": "/project1/myProject/op1",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op2": {
+                "path": "/project1/myProject/op2",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              },
+              "op3": {
+                "path": "/project1/myProject/op3",
+                "op": "<OP_OBJECT>",
+                "extensions": {}
+              }
             },
             "extensions": {}
           }
         },
         "ops": {
-          "op2": "/project1/myProject/op2"
+          "op2": {
+            "path": "/project1/myProject/op2",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          }
         },
         "extensions": {}
       }
@@ -193,6 +315,7 @@ expected = {
     "extensions": {}
   }
 }
+
 passed(current_storage() == expected, 'storage', 'Checking above test')
 info('Gonna remove an entire branch')
 opr.items._remove()
@@ -216,7 +339,7 @@ expected = {
       "items": {
         "children": {},
         "ops": {
-          "op3": "/project1/myProject/op3"
+          "op3": {"path": "/project1/myProject/op3", "op": "<OP_OBJECT>", "extensions": {}}
         },
         "extensions": {}
       }
@@ -225,6 +348,7 @@ expected = {
   }
 }
 passed(current_storage() == expected, 'storage', 'Checking above test')
+
 info('Clearing storage!')
 opr._clear()
 print('==========TESTS COMPLETED==========')
