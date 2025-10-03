@@ -23,8 +23,8 @@ class OPBaseWrapper(ABC):
         pass
 
     @abstractmethod
-    def _remove(self, name):
-        """Remove a child by name."""
+    def _remove(self, name=None):
+        """Remove self, named child, or extension. Implementation varies by type."""
         pass
 
     @abstractmethod
@@ -62,8 +62,49 @@ class OPLeaf(OPBaseWrapper):
     def _add(self, name, op):
         raise NotImplementedError("Cannot add to a leaf")
 
-    def _remove(self, name):
-        raise NotImplementedError("Cannot remove from a leaf")
+    def _remove(self):
+        """
+        Remove this leaf from its parent container.
+
+        This enables direct leaf removal: opr.items('op1')._remove()
+
+        Future: When extensions are implemented, this will also clean up
+        any extensions associated with this leaf.
+        """
+        if self._parent is None:
+            utils.log("DEBUG _remove: Cannot remove leaf - no parent container")
+            return self
+
+        # Find this leaf in parent's children
+        parent_container = self._parent
+        my_name = None
+        for child_name, child in parent_container._children.items():
+            if child is self:
+                my_name = child_name
+                break
+
+        if my_name is not None:
+            utils.log(f"DEBUG _remove: Removing leaf '{my_name}' from parent container")
+            del parent_container._children[my_name]
+
+            # Find root by traversing up parent chain (avoid name mangling issues)
+            root = parent_container
+            while root._parent is not None:
+                root = root._parent
+
+            # Update storage
+            if hasattr(root, 'OProxies'):
+                utils.remove(self, root.OProxies, parent_container.path)
+                root._save_to_storage()
+
+            # Future: Clean up extensions associated with this leaf
+            # This will be implemented when _extend() and extensions are added
+            # utils.log(f"DEBUG _remove: TODO - Clean up extensions for leaf '{my_name}'")
+
+        else:
+            utils.log("DEBUG _remove: Could not find leaf in parent container children")
+
+        return self
 
     def _tree(self):
         return f"Leaf: {self._op.name} ({self._op.path})"
@@ -82,6 +123,59 @@ class OPLeaf(OPBaseWrapper):
 
     def __repr__(self):
         return repr(self._op)
+
+
+class OProxyExtension(OPBaseWrapper):
+    """
+    Placeholder class for future extension functionality.
+
+    When _extend() is implemented, this will be the base class for all extensions.
+    Extensions will be able to be removed independently of their parent containers/leafs.
+    """
+
+    def __init__(self, parent, extension_data=None):
+        """
+        Initialize extension placeholder.
+
+        Args:
+            parent: Parent container or leaf this extension belongs to
+            extension_data: Future extension metadata/configuration
+        """
+        # Placeholder - actual implementation will come with _extend()
+        super().__init__(path="", parent=parent)
+        self._extension_data = extension_data or {}
+
+    def _remove(self):
+        """
+        Remove this extension (placeholder implementation).
+
+        Future implementation will:
+        - Remove extension from parent's extension registry
+        - Clean up extension data from storage
+        - Update any extension dependencies
+        - Remove extension attributes from parent
+
+        For now, this is a placeholder that logs the intended behavior.
+        """
+        utils.log("DEBUG _remove: Extension removal placeholder - not yet implemented")
+        utils.log("Future: Will remove extension from parent and clean up storage")
+
+        # Placeholder for future extension removal logic:
+        # if self._parent:
+        #     # Remove from parent's extension registry
+        #     # Clean up storage data
+        #     # Update dependencies
+
+        return self
+
+    def _add(self, name, op):
+        """Extensions cannot add children."""
+        raise NotImplementedError("Extensions cannot add children")
+
+    def _tree(self):
+        """Return string representation of extension."""
+        return f"Extension: {self.__class__.__name__}"
+
 
 class OPContainer(OPBaseWrapper):
     """Composite: Container for OPs or sub-containers."""
@@ -289,16 +383,9 @@ class OPContainer(OPBaseWrapper):
             # Create new container
             self._add_init(name, op)
 
-    def __find_root(self):
-        """Internal method: Traverse up parent chain to find root container."""
-        current = self
-        while current._parent is not None:
-            current = current._parent
-        return current
-
     def _remove(self, name=None):
         """
-        Remove containers.
+        Remove containers, leafs, or extensions.
 
         Usage:
         - container._remove()           # Remove this container from its parent
@@ -351,6 +438,14 @@ class OPContainer(OPBaseWrapper):
             else:
                 utils.log(f"DEBUG _remove: Child '{name}' not found in container '{self.path or 'root'}'")
             return self
+
+    def __find_root(self):
+        """Internal method: Traverse up parent chain to find root container."""
+        current = self
+        while current._parent is not None:
+            current = current._parent
+        return current
+
 
     def _tree(self, indent=""):
         lines = [f"{indent}Container: {self.path or 'root'}"]
