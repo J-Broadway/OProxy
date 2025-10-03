@@ -58,6 +58,7 @@ class OPLeaf(OPBaseWrapper):
         self._op = td.op(op) if isinstance(op, str) else op
         if not self._op or not self._op.valid:
             raise ValueError(f"Invalid OP: {op}")
+        self._extensions = {}  # Extensions applied to this OP
 
     def _add(self, name, op):
         raise NotImplementedError("Cannot add to a leaf")
@@ -185,6 +186,7 @@ class OPContainer(OPBaseWrapper):
         self._children = {}  # name -> OPBaseWrapper (leaf or sub-container)
         self._ownerComp = ownerComp  # Only root has this for storage
         self._is_root = root  # Explicit root flag to avoid recursion issues
+        self._extensions = {}  # Extensions applied to this container
         if ops:
             for op in ops:
                 self._add(op.name, op)  # Auto-add initial OPs as leaves
@@ -533,7 +535,13 @@ class OPContainer(OPBaseWrapper):
                 # Add OPs from this container
                 for op_name, op_child in child._children.items():
                     if hasattr(op_child, '_op'):  # It's an OPLeaf
-                        container_data['ops'][op_name] = op_child._op.path
+                        # Create OP object with path, raw OP, and extensions
+                        op_data = {
+                            'path': op_child._op.path,
+                            'op': op_child._op,  # Store raw OP object for name change detection
+                            'extensions': getattr(op_child, '_extensions', {})  # Will be added by _extend()
+                        }
+                        container_data['ops'][op_name] = op_data
 
                 result[name] = container_data
 
@@ -561,15 +569,52 @@ class OPContainer(OPBaseWrapper):
 
             # Load OPs into the container
             ops_data = container_data.get('ops', {})
-            for op_name, op_path in ops_data.items():
-                utils.log(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
-                op = td.op(op_path)
-                if op and op.valid:
-                    leaf_path = f"{container_path}.{op_name}"
-                    leaf = OPLeaf(op, path=leaf_path, parent=container)
-                    container._children[op_name] = leaf
+            for op_name, op_info in ops_data.items():
+                if isinstance(op_info, str):
+                    # Legacy format support (simple path string)
+                    op_path = op_info
+                    stored_op = None
+                    op_extensions = {}
                 else:
-                    utils.log(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid")
+                    # New format (object with path, raw OP, and extensions)
+                    op_path = op_info.get('path', '')
+                    stored_op = op_info.get('op')  # Raw OP object for name change detection
+                    op_extensions = op_info.get('extensions', {})
+
+                utils.log(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
+
+                # Try to get OP by stored path first
+                op = td.op(op_path) if op_path else None
+
+                # If that fails but we have a stored OP object, use it (handles renames)
+                if not (op and op.valid) and stored_op and stored_op.valid:
+                    op = stored_op
+                    utils.log(f"DEBUG _refresh: Using stored OP object for '{op_name}' (original path may have changed)")
+
+                if op and op.valid:
+                    # Check for name changes
+                    current_name = op.name
+                    if op_name != current_name:
+                        utils.log(f"DEBUG _refresh: OP name changed from '{op_name}' to '{current_name}', updating mapping")
+                        # Use current name as key instead of stored name
+                        actual_key = current_name
+                    else:
+                        actual_key = op_name
+
+                    leaf_path = f"{container_path}.{actual_key}"
+                    leaf = OPLeaf(op, path=leaf_path, parent=container)
+
+                    # Load extensions onto the leaf
+                    if op_extensions:
+                        leaf._extensions = op_extensions
+                        # Re-apply extensions (will be implemented in _extend)
+                        for ext_name, ext_data in op_extensions.items():
+                            # TODO: Apply extension logic here
+                            pass
+
+                    container._children[actual_key] = leaf
+                else:
+                    utils.log(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid, skipping")
 
             # Recursively load nested children containers
             nested_children = container_data.get('children', {})
@@ -591,12 +636,52 @@ class OPContainer(OPBaseWrapper):
 
             # Load OPs
             ops_data = container_data.get('ops', {})
-            for op_name, op_path in ops_data.items():
-                op = td.op(op_path)
+            for op_name, op_info in ops_data.items():
+                if isinstance(op_info, str):
+                    # Legacy format support (simple path string)
+                    op_path = op_info
+                    stored_op = None
+                    op_extensions = {}
+                else:
+                    # New format (object with path, raw OP, and extensions)
+                    op_path = op_info.get('path', '')
+                    stored_op = op_info.get('op')  # Raw OP object for name change detection
+                    op_extensions = op_info.get('extensions', {})
+
+                utils.log(f"DEBUG _refresh: Loading nested OP '{op_name}' from '{op_path}'")
+
+                # Try to get OP by stored path first
+                op = td.op(op_path) if op_path else None
+
+                # If that fails but we have a stored OP object, use it (handles renames)
+                if not (op and op.valid) and stored_op and stored_op.valid:
+                    op = stored_op
+                    utils.log(f"DEBUG _refresh: Using stored OP object for nested '{op_name}' (original path may have changed)")
+
                 if op and op.valid:
-                    leaf_path = f"{container_path}.{op_name}"
+                    # Check for name changes
+                    current_name = op.name
+                    if op_name != current_name:
+                        utils.log(f"DEBUG _refresh: Nested OP name changed from '{op_name}' to '{current_name}', updating mapping")
+                        # Use current name as key instead of stored name
+                        actual_key = current_name
+                    else:
+                        actual_key = op_name
+
+                    leaf_path = f"{container_path}.{actual_key}"
                     leaf = OPLeaf(op, path=leaf_path, parent=container)
-                    container._children[op_name] = leaf
+
+                    # Load extensions onto the leaf
+                    if op_extensions:
+                        leaf._extensions = op_extensions
+                        # Re-apply extensions (will be implemented in _extend)
+                        for ext_name, ext_data in op_extensions.items():
+                            # TODO: Apply extension logic here
+                            pass
+
+                    container._children[actual_key] = leaf
+                else:
+                    utils.log(f"DEBUG _refresh: Warning - Nested OP '{op_path}' not found or invalid, skipping")
 
             # Recursively load deeper nesting
             nested_children = container_data.get('children', {})

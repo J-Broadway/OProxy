@@ -32,8 +32,13 @@ def store(container, storage_dict, parent_path=""):
     # Process all children
     for name, child in container._children.items():
         if hasattr(child, '_op'):  # This is an OPLeaf
-            # Store OP path directly
-            container_data['ops'][name] = child._op.path
+            # Store OP as object with path, raw OP, and extensions
+            op_data = {
+                'path': child._op.path,
+                'op': child._op,  # Store raw OP object for name change detection
+                'extensions': getattr(child, '_extensions', {})
+            }
+            container_data['ops'][name] = op_data
         elif hasattr(child, '_children'):  # This is a nested OPContainer
             # Recursively store nested container
             nested_storage = storage_dict
