@@ -17,3 +17,16 @@
 <OProxy [INFO:_add]> Successfully created container 'one' with 3 OPs
 <OProxy [DEBUG:_update_storage]> Saving container hierarchy to storage
  Saved 1 top-level containers to storage
+<OProxy [ERROR:_extend]> Extension creation failed for 'test': 'td.moviefileinTOP' object has no attribute 'test'
+Traceback (most recent call last):
+  File "/project1/myProject/OProxy/OPBaseWrapper", line 1093, in _extend
+  File "/project1/myProject/OProxy/OPBaseWrapper", line 709, in __setattr__
+  File "/project1/myProject/OProxy/OPBaseWrapper", line 212, in __setattr__
+AttributeError: 'td.moviefileinTOP' object has no attribute 'test'
+
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [INFO:Init]> OProxy root initialized
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [INFO:Init]> OProxy root initialized

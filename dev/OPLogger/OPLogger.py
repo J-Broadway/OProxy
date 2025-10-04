@@ -1,11 +1,13 @@
 from collections import deque
 import os
+import traceback
+import sys
 
 status = [
-	"INFO",
+	"INFO", # Default status
 	"WARNING",
 	"ERROR",
-	"DEBUG",
+	"DEBUG", # Meant for internal use.
 ]
 
 class Logger:
@@ -104,6 +106,14 @@ class Logger:
 	def __call__(self, msg=None, status='info', process=None, multi=True):
 		if msg is None:
 			msg = ''
+
+		# Automatically append traceback if this is an error and inside an except block
+		if status.upper() == 'ERROR':
+			exc_type, exc_value, exc_tb = sys.exc_info()
+			if exc_tb is not None:  # We're in an except block
+				trace = traceback.format_exc()
+				msg = f"{msg}\n{trace}".strip()
+
 		# Normalize process
 		normalized_process = self._format_process(process)
 		current_state = (status.upper(), normalized_process, multi)

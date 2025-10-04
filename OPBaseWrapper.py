@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import td
 import types
 import time
+import traceback
 from utils import td_isinstance
 
 ''' LLM Notes:
@@ -145,7 +146,7 @@ class OPLeaf(OPBaseWrapper):
         try:
             self._refresh_extensions(target)
         except Exception as e:
-            Log(f"Leaf refresh failed for {self.path}: {e}", status='error', process='_refresh')
+            Log(f"Leaf refresh failed for {self.path}: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
 
     def _refresh_extensions(self, target=None):
         """Load stored extension metadata and re-extract from DATs for this leaf."""
@@ -199,7 +200,7 @@ class OPLeaf(OPBaseWrapper):
                 self._extensions[ext_name] = extension
 
             except Exception as e:
-                Log(f"Failed to reload extension '{ext_name}' on leaf '{self.path}': {e}", status='warning', process='_refresh')
+                Log(f"Failed to reload extension '{ext_name}' on leaf '{self.path}': {e}\n{traceback.format_exc()}", status='warning', process='_refresh')
 
     def __getattr__(self, name):
         return getattr(self._op, name)
@@ -346,10 +347,14 @@ class OProxyExtension(OPBaseWrapper):
 
     def __call__(self, *args, **kwargs):
         """Allow calling if the actual object is callable."""
-        if callable(self._actual):
-            return self._actual(*args, **kwargs)
-        else:
-            raise TypeError(f"'{self.__class__.__name__}' object is not callable")
+        try:
+            if callable(self._actual):
+                return self._actual(*args, **kwargs)
+            else:
+                raise TypeError(f"'{self.__class__.__name__}' object is not callable")
+        except Exception as e:
+            Log(f"Extension call failed: {e}\n{traceback.format_exc()}", status='error', process='__call__')
+            raise
 
     @property
     def extension_info(self):
@@ -396,6 +401,14 @@ class OProxyExtension(OPBaseWrapper):
     def _tree(self):
         """Return string representation of extension."""
         return f"Extension: {self.__class__.__name__}"
+
+    def _refresh(self, target=None):
+        """Extensions don't refresh themselves."""
+        raise NotImplementedError("Extensions cannot be refreshed")
+
+    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+        """Extensions cannot extend themselves."""
+        raise NotImplementedError("Extensions cannot be extended")
 
 
 class OPContainer(OPBaseWrapper):
@@ -757,7 +770,7 @@ class OPContainer(OPBaseWrapper):
             self.OProxies['children'] = container_data
 
         except Exception as e:
-            Log(f"Failed to update storage: {e}", status='error', process='_update_storage')
+            Log(f"Failed to update storage: {e}\n{traceback.format_exc()}", status='error', process='_update_storage')
             raise
 
     def _update_container_in_storage(self, container_data):
@@ -824,7 +837,7 @@ class OPContainer(OPBaseWrapper):
                 self._update_storage()
 
         except Exception as e:
-            Log(f"Container refresh failed for {self.path}: {e}", status='error', process='_refresh')
+            Log(f"Container refresh failed for {self.path}: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
 
     def _refresh_ops(self, target=None):
         """Load stored container data and check for OP name changes"""
@@ -913,7 +926,7 @@ class OPContainer(OPBaseWrapper):
                 self._extensions[ext_name] = extension
 
             except Exception as e:
-                Log(f"Failed to reload extension '{ext_name}': {e}", status='warning', process='_refresh')
+                Log(f"Failed to reload extension '{ext_name}': {e}\n{traceback.format_exc()}", status='warning', process='_refresh')
 
     def _get_stored_container_data(self):
         """Navigate storage hierarchy to find data for this container."""
@@ -1022,64 +1035,71 @@ class OPContainer(OPBaseWrapper):
         if not dat:
             raise ValueError("'dat' parameter is required for extensions")
 
-        # Import AST extraction module
-        mod_ast = mod('mod_AST')
-
-        # Validate DAT
         try:
-            dat = td_isinstance(dat, 'textdat', allow_string=True)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid DAT: {e}")
+            # Import AST extraction module
+            mod_ast = mod('mod_AST')
 
-        # Check for naming conflicts
-        if hasattr(self, attr_name) and not monkey_patch:
-            existing_attr = getattr(self, attr_name)
-            if not isinstance(existing_attr, OProxyExtension):
-                raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
-                               f"To overwrite, use monkey_patch=True.")
+            # Validate DAT
+            try:
+                dat = td_isinstance(dat, 'textdat', allow_string=True)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid DAT: {e}")
 
-        # Extract the actual object
-        try:
-            actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
-        except Exception as e:
-            raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+            # Check for naming conflicts
+            if hasattr(self, attr_name) and not monkey_patch:
+                existing_attr = getattr(self, attr_name)
+                if not isinstance(existing_attr, OProxyExtension):
+                    raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
+                                   f"To overwrite, use monkey_patch=True.")
 
-        # Prepare metadata
-        metadata = {
-            'cls': cls, 'func': func, 'dat_path': dat.path,
-            'args': args, 'call': call, 'created_at': time.time()
-        }
+            # Extract the actual object
+            try:
+                actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+            except Exception as e:
+                raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
 
-        # Create extension wrapper
-        extension = OProxyExtension(actual_obj, self, dat, metadata)
+            # Prepare metadata
+            metadata = {
+                'cls': cls, 'func': func, 'dat_path': dat.path,
+                'args': args, 'call': call, 'created_at': time.time()
+            }
 
-        # Store extension name for removal purposes
-        extension._extension_name = attr_name
+            # Create extension wrapper
+            extension = OProxyExtension(actual_obj, self, dat, metadata)
 
-        # Handle call parameter
-        if call:
-            if args is not None and not isinstance(args, (tuple, list)):
-                raise TypeError("args must be a tuple or list of positional arguments when call=True")
+            # Store extension name for removal purposes
+            extension._extension_name = attr_name
 
+            # Handle call parameter
             if call:
-                if isinstance(actual_obj, type):  # Class instantiation
-                    result = actual_obj(*args) if args else actual_obj()
-                    extension = OProxyExtension(result, self, dat, metadata)
-                    extension._extension_name = attr_name
-                else:  # Function call
-                    bound_method = types.MethodType(actual_obj, self)
-                    result = bound_method(*args) if args else bound_method()
-                    extension = OProxyExtension(bound_method, self, dat, metadata)
-                    extension._extension_name = attr_name
+                if args is not None and not isinstance(args, (tuple, list)):
+                    raise TypeError("args must be a tuple or list of positional arguments when call=True")
 
-        # Apply extension to parent object (make it accessible)
-        setattr(self, attr_name, extension)
+                try:
+                    if isinstance(actual_obj, type):  # Class instantiation
+                        result = actual_obj(*args) if args else actual_obj()
+                        extension = OProxyExtension(result, self, dat, metadata)
+                        extension._extension_name = attr_name
+                    else:  # Function call
+                        bound_method = types.MethodType(actual_obj, self)
+                        result = bound_method(*args) if args else bound_method()
+                        extension = OProxyExtension(bound_method, self, dat, metadata)
+                        extension._extension_name = attr_name
+                except Exception as e:
+                    Log(f"Extension call execution failed during _extend: {e}\n{traceback.format_exc()}", status='error', process='_extend')
+                    raise
 
-        # Store in internal registry for management
-        self._extensions[attr_name] = extension
+            # Apply extension to parent object (make it accessible)
+            setattr(self, attr_name, extension)
 
-        # Update storage with extension metadata
-        self._update_storage()
+            # Store in internal registry for management
+            self._extensions[attr_name] = extension
 
-        Log(f"Extension '{attr_name}' added to container '{self.path or 'root'}'", status='info', process='_extend')
+            # Update storage with extension metadata
+            self._update_storage()
+
+            Log(f"Extension '{attr_name}' added to container '{self.path or 'root'}'", status='info', process='_extend')
+        except Exception as e:
+            Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
+            raise
         return self
