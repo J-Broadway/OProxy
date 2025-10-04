@@ -98,6 +98,7 @@ class root(OPContainer):
     def _clear(self):
         """Clear all stored OProxy data and reload empty hierarchy."""
         self.OProxies = {'children': {}, 'extensions': {}}
+        self.Log.flush()  # Clear logging state and log files for fresh start
         self._refresh()  # Reload from the now-empty storage
 
 
