@@ -1,6 +1,8 @@
 # OPBaseWrapper.py - Composite Pattern for OProxy
 from abc import ABC, abstractmethod
 import td
+import types
+import time
 from utils import td_isinstance
 
 ''' LLM Notes:
@@ -10,7 +12,7 @@ in comment vs codebase are found.
 
 # Import utils module for storage functions
 utils = mod('utils')
-Log = parent.opr.Log
+Log = parent.opr.Log # Use this instead of self.Log() <-- will return errors.
 
 class OPBaseWrapper(ABC):
     """Abstract Component: Common interface for leaves and composites."""
@@ -36,6 +38,28 @@ class OPBaseWrapper(ABC):
     @abstractmethod
     def _refresh(self, target=None):
         """Abstract refresh method - implemented by subclasses."""
+        pass
+
+    @abstractmethod
+    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+        """
+        Extend the proxy object with an attribute or method from a Text DAT.
+
+        Parameters:
+        - attr_name (str): Name for the extension
+        - cls (str): Class name to extract from DAT
+        - func (str): Function name to extract from DAT
+        - dat (DAT): Text DAT containing the extension (required)
+        - args (tuple|list): Arguments for instantiation/calling when call=True
+        - call (bool): Whether to instantiate/call immediately
+        - monkey_patch (bool): Allow overwriting existing attributes
+
+        Returns:
+        - self: For method chaining
+
+        Raises:
+        - ValueError: Invalid parameters, naming conflicts, extraction failures
+        """
         pass
 
     # Shared proxy methods (implemented in subclasses)
@@ -124,9 +148,58 @@ class OPLeaf(OPBaseWrapper):
             Log(f"Leaf refresh failed for {self.path}: {e}", status='error', process='_refresh')
 
     def _refresh_extensions(self, target=None):
-        """Placeholder for extension refresh logic - will re-extract from DATs when _extend() is implemented"""
-        # TODO: Implement when _extend() is complete
-        pass
+        """Load stored extension metadata and re-extract from DATs for this leaf."""
+        if not self._parent:
+            return
+
+        # Get the stored data for this leaf from parent's storage
+        stored_data = self._parent._get_stored_container_data()
+        if not stored_data:
+            return
+
+        ops_data = stored_data.get('ops', {})
+
+        # Find this leaf in stored ops
+        leaf_name = None
+        for stored_name, op_info in ops_data.items():
+            if isinstance(op_info, dict):
+                stored_path = op_info.get('path', '')
+                if stored_path == self._op.path:
+                    leaf_name = stored_name
+                    extensions_data = op_info.get('extensions', {})
+                    break
+
+        if not leaf_name or not extensions_data:
+            return
+
+        mod_ast = mod('mod_AST')
+
+        for ext_name, metadata in extensions_data.items():
+            try:
+                # Re-extract the actual object
+                actual_obj = mod_ast.Main(
+                    cls=metadata['cls'],
+                    func=metadata['func'],
+                    op=metadata['dat_path'],
+                    log=Log
+                )
+
+                # Re-wrap in factory template
+                extension = OProxyExtension(actual_obj, self,
+                                          source_dat=metadata['dat_path'],
+                                          metadata=metadata)
+
+                # Store extension name for removal purposes
+                extension._extension_name = ext_name
+
+                # Apply to parent object
+                setattr(self, ext_name, extension)
+
+                # Store in registry
+                self._extensions[ext_name] = extension
+
+            except Exception as e:
+                Log(f"Failed to reload extension '{ext_name}' on leaf '{self.path}': {e}", status='warning', process='_refresh')
 
     def __getattr__(self, name):
         return getattr(self._op, name)
@@ -143,48 +216,177 @@ class OPLeaf(OPBaseWrapper):
     def __repr__(self):
         return repr(self._op)
 
+    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+        """
+        Extend the leaf with an attribute or method from a Text DAT.
+
+        Leaf extensions are bound to the leaf instance (self refers to the OPLeaf).
+        """
+        # Parameter validation
+        if not (cls or func) and dat is not None:
+            raise ValueError("Must specify either 'cls' or 'func' when 'dat' is provided")
+        if (cls and func) or (not cls and not func):
+            raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
+        if not dat:
+            raise ValueError("'dat' parameter is required for extensions")
+
+        # Import AST extraction module
+        mod_ast = mod('mod_AST')
+
+        # Validate DAT
+        try:
+            dat = td_isinstance(dat, 'textdat', allow_string=True)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid DAT: {e}")
+
+        # Check for naming conflicts
+        if hasattr(self, attr_name) and not monkey_patch:
+            existing_attr = getattr(self, attr_name)
+            if not isinstance(existing_attr, OProxyExtension):
+                raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
+                               f"To overwrite, use monkey_patch=True.")
+
+        # Extract the actual object
+        try:
+            actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+
+        # Prepare metadata
+        metadata = {
+            'cls': cls, 'func': func, 'dat_path': dat.path,
+            'args': args, 'call': call, 'created_at': time.time()
+        }
+
+        # Create extension wrapper
+        extension = OProxyExtension(actual_obj, self, dat, metadata)
+
+        # Store extension name for removal purposes
+        extension._extension_name = attr_name
+
+        # Handle call parameter
+        if call:
+            if args is not None and not isinstance(args, (tuple, list)):
+                raise TypeError("args must be a tuple or list of positional arguments when call=True")
+
+            if call:
+                if isinstance(actual_obj, type):  # Class instantiation
+                    result = actual_obj(*args) if args else actual_obj()
+                    extension = OProxyExtension(result, self, dat, metadata)
+                    extension._extension_name = attr_name
+                else:  # Function call
+                    bound_method = types.MethodType(actual_obj, self)
+                    result = bound_method(*args) if args else bound_method()
+                    extension = OProxyExtension(bound_method, self, dat, metadata)
+                    extension._extension_name = attr_name
+
+        # Apply extension to parent object (make it accessible)
+        setattr(self, attr_name, extension)
+
+        # Store in internal registry for management
+        self._extensions[attr_name] = extension
+
+        # Update storage by finding root and updating
+        root = self
+        while root._parent is not None:
+            root = root._parent
+        if hasattr(root, 'OProxies'):
+            root._update_storage()
+
+        Log(f"Extension '{attr_name}' added to leaf '{self.path}'", status='info', process='_extend')
+        return self
+
 
 class OProxyExtension(OPBaseWrapper):
     """
-    Placeholder class for future extension functionality.
+    Factory template for all OProxy extensions. Provides consistent interface,
+    delegation to extracted objects, and metadata tracking.
 
-    When _extend() is implemented, this will be the base class for all extensions.
     Extensions will be able to be removed independently of their parent containers/leafs.
     """
 
-    def __init__(self, parent, extension_data=None):
+    def __init__(self, actual_obj, parent, source_dat=None, metadata=None):
         """
-        Initialize extension placeholder.
+        Initialize extension with extracted object and metadata.
 
         Args:
+            actual_obj: The extracted class/function from AST module
             parent: Parent container or leaf this extension belongs to
-            extension_data: Future extension metadata/configuration
+            source_dat: Original DAT object where extension was defined
+            metadata: Extension metadata (cls, func, dat_path, etc.)
         """
-        # Placeholder - actual implementation will come with _extend()
         super().__init__(path="", parent=parent)
-        self._extension_data = extension_data or {}
+        self._actual = actual_obj  # The extracted class/function
+        self._source_dat = source_dat
+        self._metadata = metadata or {}
+
+        # Dynamically copy attributes from actual object for delegation
+        self._copy_attributes_from_actual()
+
+    def _copy_attributes_from_actual(self):
+        """Copy non-private attributes from the actual object to enable delegation."""
+        for attr_name in dir(self._actual):
+            if not attr_name.startswith('_') and not hasattr(self, attr_name):
+                try:
+                    attr = getattr(self._actual, attr_name)
+                    setattr(self, attr_name, attr)
+                except (AttributeError, TypeError):
+                    # Skip attributes that can't be copied
+                    pass
+
+    def __getattr__(self, name):
+        """Delegate attribute access to the actual object."""
+        if name.startswith('_'):
+            # Don't delegate private attributes
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        try:
+            return getattr(self._actual, name)
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+    def __call__(self, *args, **kwargs):
+        """Allow calling if the actual object is callable."""
+        if callable(self._actual):
+            return self._actual(*args, **kwargs)
+        else:
+            raise TypeError(f"'{self.__class__.__name__}' object is not callable")
+
+    @property
+    def extension_info(self):
+        """Access metadata about this extension."""
+        return {
+            'source_dat': self._source_dat,
+            'parent': self._parent,
+            'metadata': self._metadata,
+            'actual_type': type(self._actual).__name__,
+            'is_callable': callable(self._actual)
+        }
 
     def _remove(self):
         """
-        Remove this extension (placeholder implementation).
+        Remove this extension from its parent and clean up storage.
 
-        Future implementation will:
-        - Remove extension from parent's extension registry
+        Implementation will:
+        - Remove extension from parent's _extensions registry
+        - Remove extension attribute from parent object
         - Clean up extension data from storage
-        - Update any extension dependencies
-        - Remove extension attributes from parent
-
-        For now, this is a placeholder that logs the intended behavior.
+        - Update storage persistence
         """
-        Log("Extension removal placeholder - not yet implemented", status='debug', process='_remove')
-        Log("Future: Will remove extension from parent and clean up storage", status='debug', process='_remove')
+        if self._parent:
+            # Remove from parent's extension registry
+            if hasattr(self._parent, '_extensions') and hasattr(self, '_extension_name'):
+                if self._extension_name in self._parent._extensions:
+                    del self._parent._extensions[self._extension_name]
 
-        # Placeholder for future extension removal logic:
-        # if self._parent:
-        #     # Remove from parent's extension registry
-        #     # Clean up storage data
-        #     # Update dependencies
+            # Remove extension attribute from parent
+            if hasattr(self._parent, self._extension_name):
+                delattr(self._parent, self._extension_name)
 
+            # Clean up storage (will call parent's storage update)
+            if hasattr(self._parent, '_update_storage'):
+                self._parent._update_storage()
+
+        Log(f"Extension '{getattr(self, '_extension_name', 'unknown')}' removed successfully", status='info', process='_remove')
         return self
 
     def _add(self, name, op):
@@ -411,7 +613,12 @@ class OPContainer(OPBaseWrapper):
         - container._remove()           # Remove this container from its parent
         - container._remove('child')    # Remove named child from this container
         - container._remove(['child1', 'child2'])  # Remove multiple children
+        - extension._remove()           # Remove this extension
         """
+        # Case 0: _remove() on extension - delegate to extension's remove method
+        if isinstance(self, OProxyExtension):
+            return self._remove()
+
         # Case 1: _remove() - remove self from parent
         if name is None:
             if self._parent is not None:
@@ -583,7 +790,7 @@ class OPContainer(OPBaseWrapper):
                 container_data = {
                     'children': child.__build_storage_structure(),  # Recursively build nested children
                     'ops': {},  # OPs in this container
-                    'extensions': {}
+                    'extensions': getattr(child, '_extensions', {})  # Container extensions
                 }
 
                 # Add OPs from this container
@@ -673,9 +880,40 @@ class OPContainer(OPBaseWrapper):
                     del self._children[stored_key]
 
     def _refresh_extensions(self, target=None):
-        """Placeholder for extension refresh logic - will re-extract from DATs when _extend() is implemented"""
-        # TODO: Implement when _extend() is complete
-        pass
+        """Load stored extension metadata and re-extract from DATs."""
+        stored_data = self._get_stored_container_data()
+        if not stored_data:
+            return
+
+        extensions_data = stored_data.get('extensions', {})
+        mod_ast = mod('mod_AST')
+
+        for ext_name, metadata in extensions_data.items():
+            try:
+                # Re-extract the actual object
+                actual_obj = mod_ast.Main(
+                    cls=metadata['cls'],
+                    func=metadata['func'],
+                    op=metadata['dat_path'],
+                    log=Log
+                )
+
+                # Re-wrap in factory template
+                extension = OProxyExtension(actual_obj, self,
+                                          source_dat=metadata['dat_path'],
+                                          metadata=metadata)
+
+                # Store extension name for removal purposes
+                extension._extension_name = ext_name
+
+                # Apply to parent object
+                setattr(self, ext_name, extension)
+
+                # Store in registry
+                self._extensions[ext_name] = extension
+
+            except Exception as e:
+                Log(f"Failed to reload extension '{ext_name}': {e}", status='warning', process='_refresh')
 
     def _get_stored_container_data(self):
         """Navigate storage hierarchy to find data for this container."""
@@ -769,3 +1007,79 @@ class OPContainer(OPBaseWrapper):
                 self._load_nested_containers(container, nested_children, container_path)
 
             parent_container._children[container_name] = container
+
+    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+        """
+        Extend the container with an attribute or method from a Text DAT.
+
+        Container extensions are bound to the container instance (self refers to the OPContainer).
+        """
+        # Parameter validation
+        if not (cls or func) and dat is not None:
+            raise ValueError("Must specify either 'cls' or 'func' when 'dat' is provided")
+        if (cls and func) or (not cls and not func):
+            raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
+        if not dat:
+            raise ValueError("'dat' parameter is required for extensions")
+
+        # Import AST extraction module
+        mod_ast = mod('mod_AST')
+
+        # Validate DAT
+        try:
+            dat = td_isinstance(dat, 'textdat', allow_string=True)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid DAT: {e}")
+
+        # Check for naming conflicts
+        if hasattr(self, attr_name) and not monkey_patch:
+            existing_attr = getattr(self, attr_name)
+            if not isinstance(existing_attr, OProxyExtension):
+                raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
+                               f"To overwrite, use monkey_patch=True.")
+
+        # Extract the actual object
+        try:
+            actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+
+        # Prepare metadata
+        metadata = {
+            'cls': cls, 'func': func, 'dat_path': dat.path,
+            'args': args, 'call': call, 'created_at': time.time()
+        }
+
+        # Create extension wrapper
+        extension = OProxyExtension(actual_obj, self, dat, metadata)
+
+        # Store extension name for removal purposes
+        extension._extension_name = attr_name
+
+        # Handle call parameter
+        if call:
+            if args is not None and not isinstance(args, (tuple, list)):
+                raise TypeError("args must be a tuple or list of positional arguments when call=True")
+
+            if call:
+                if isinstance(actual_obj, type):  # Class instantiation
+                    result = actual_obj(*args) if args else actual_obj()
+                    extension = OProxyExtension(result, self, dat, metadata)
+                    extension._extension_name = attr_name
+                else:  # Function call
+                    bound_method = types.MethodType(actual_obj, self)
+                    result = bound_method(*args) if args else bound_method()
+                    extension = OProxyExtension(bound_method, self, dat, metadata)
+                    extension._extension_name = attr_name
+
+        # Apply extension to parent object (make it accessible)
+        setattr(self, attr_name, extension)
+
+        # Store in internal registry for management
+        self._extensions[attr_name] = extension
+
+        # Update storage with extension metadata
+        self._update_storage()
+
+        Log(f"Extension '{attr_name}' added to container '{self.path or 'root'}'", status='info', process='_extend')
+        return self
