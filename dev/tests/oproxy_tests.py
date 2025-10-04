@@ -1,6 +1,8 @@
 import json
 
 opr = parent.src.OProxy
+log = op('OProxy').Log
+
 ''' Notes for LLM
 	Please do not edit unless explicitly asked
 '''
@@ -15,15 +17,17 @@ if t := op('changed3'):
 	t.name = 'op3'
 
 def info(msg):
-	print(f'\n{msg}\n')
+	log(f'\n{msg}\n', status='test', process='info')
 
 def passed(test, test_name, msg):
 	if test:
-		print(f'\n{msg} --> {test_name.upper()} TEST PASSED\n')
+		log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
 	else:
 		if test_name == 'storage':
+			log('\n STORAGE INCONGRUENCY \n', status='test', process='result')
 			raise ValueError('\n STORAGE INCONGRUENCY \n')
-		raise(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
+		log(f'\n{msg} --> {test_name.upper()} TEST FAILED\n', status='test', process='result')
+		raise Exception(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
 
 def normalize_storage_for_comparison(storage):
     """Normalize storage by replacing OP objects and extensions with placeholders for comparison."""
@@ -47,7 +51,7 @@ def current_storage(msg=None):
 	if msg:
 		# Normalize for JSON serialization before printing
 		normalized_for_print = normalize_storage_for_comparison(current_storage)
-		print(f'\n{msg} --> {json.dumps(normalized_for_print, indent=2)}\n')
+		log(f'\n{msg} --> {json.dumps(normalized_for_print, indent=2)}\n', status='test', process='storage')
 	return normalize_storage_for_comparison(current_storage)
 	
 # Clear storage first
@@ -81,12 +85,12 @@ passed(current_storage() == expected, 'storage', 'Checking if storage matches ex
 
 # test accessibility
 for i in opr.items:
-	print('Accessibility Test: ', i.name)
+	log(f'Accessibility Test: {i.name}', status='test', process='access')
 
 # test individual acces like so
-print('Accessibility Test by [0]', opr.items[0].name)
-print('Accessibility Test by [1]', opr.items[1].name)
-print('Accessibility Test by [2]', opr.items[2].name)
+log(f'Accessibility Test by [0] {opr.items[0].name}', status='test', process='access')
+log(f'Accessibility Test by [1] {opr.items[1].name}', status='test', process='access')
+log(f'Accessibility Test by [2] {opr.items[2].name}', status='test', process='access')
 
 # Testing Nested structure
 info('Testing Nested structure')
@@ -363,7 +367,7 @@ passed(current_storage() == expected, 'storage', 'Checking above test')
 
 info('Clearing storage!')
 opr._clear(flush_logger=False)
-print('==========TESTS COMPLETED==========')
+log('==========TESTS COMPLETED==========', status='test', process='complete')
 print('Remind me to add more _remove() tests when extensions are implemented')
 
 
