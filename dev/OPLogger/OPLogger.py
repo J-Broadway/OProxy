@@ -1,4 +1,5 @@
 from collections import deque
+import os
 
 status = [
 	"INFO",
@@ -13,6 +14,43 @@ class Logger:
 		# State management deque to track last log call for grouping
 		self.state_history = deque(maxlen=1)  # Only need last state
 		self.in_multi_group = False  # Track if we're in a multi-message group
+
+	def _get_log_file_path(self):
+		"""Get the full path to the log file and ensure directory exists"""
+		if not hasattr(self.parent, 'Logdirectory') or not self.parent.Logdirectory:
+			return None
+
+		log_dir = self.parent.Logdirectory.eval() if hasattr(self.parent.Logdirectory, 'eval') else str(self.parent.Logdirectory)
+		filename = f"{self.parent.Name}.log"
+		full_path = os.path.join(log_dir, filename)
+
+		# Ensure directory exists
+		os.makedirs(log_dir, exist_ok=True)
+
+		return full_path
+
+	def _write_to_file(self, message, mode='a'):
+		"""Write message to log file if Writetofile is enabled"""
+		try:
+			if not hasattr(self.parent, 'Writetofile') or not self.parent.Writetofile:
+				return
+
+			# Check if it's a toggle parameter (has eval method) or boolean
+			write_enabled = self.parent.Writetofile.eval() if hasattr(self.parent.Writetofile, 'eval') else bool(self.parent.Writetofile)
+
+			if not write_enabled:
+				return
+
+			file_path = self._get_log_file_path()
+			if not file_path:
+				return
+
+			with open(file_path, mode, encoding='utf-8') as f:
+				f.write(message + '\n')
+
+		except (OSError, IOError, AttributeError) as e:
+			# Silently fail on file operations - don't interrupt logging
+			pass
 
 	def _format_process(self, process):
 		"""Handle process as string, list, or None"""
@@ -78,15 +116,34 @@ class Logger:
 		if show_full_prefix:
 			# Full prefix for new groups or breaks
 			prefix = self._build_prefix(status, normalized_process)
-			print(f"{prefix} {msg}")
+			log_message = f"{prefix} {msg}"
+			print(log_message)
+			self._write_to_file(log_message)
 		else:
 			# Continuation within same process group
-			print(f" {msg}")
+			log_message = f" {msg}"
+			print(log_message)
+			self._write_to_file(log_message)
 
 	def flush(self):
 		"""Full reset of state and grouping"""
 		self.state_history.clear()
 		self.in_multi_group = False
+
+		# Clear the log file if file writing is enabled
+		try:
+			if hasattr(self.parent, 'Writetofile'):
+				write_enabled = self.parent.Writetofile.eval() if hasattr(self.parent.Writetofile, 'eval') else bool(self.parent.Writetofile)
+				if write_enabled:
+					file_path = self._get_log_file_path()
+					if file_path:
+						# Clear the file by opening in write mode
+						with open(file_path, 'w', encoding='utf-8'):
+							pass
+		except (OSError, IOError, AttributeError):
+			# Silently fail on file operations
+			pass
+
 		self(status='debug', process='Flush')
 
 class root(Logger):

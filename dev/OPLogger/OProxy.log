@@ -1,0 +1,14 @@
+<OProxy [DEBUG:Flush]> 
+<OProxy [INFO:Test]> hello world
+ hello world
+<OProxy [INFO:Different]> hello world
+<OProxy [INFO:StatusTest]> Info message
+<OProxy [WARNING:StatusTest]> Warning message
+<OProxy [ERROR:StatusTest]> Error message
+<OProxy [DEBUG:StatusTest]> Debug message
+<OProxy [INFO:module:function]> List process test
+<OProxy [INFO:GroupTest]> First in group
+ Second in group
+ Third in group
+<OProxy [WARNING:GroupTest]> New group after status change
+<OProxy [INFO:EmptyTest]> 
