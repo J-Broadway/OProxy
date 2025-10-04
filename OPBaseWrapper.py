@@ -255,7 +255,7 @@ class OPContainer(OPBaseWrapper):
 
     def _add_init(self, name, op):
         """Create new container with initial OPs"""
-        Log(f"Creating new container '{name}'", status='debug', process='_add')
+        Log(f"Creating new container '{name}'", status='info', process='_add')
 
         # Validate the container name
         self._validate_child_name(self, name)
@@ -448,7 +448,7 @@ class OPContainer(OPBaseWrapper):
         else:
             if name in self._children:
                 container_to_remove = self._children[name]
-                Log(f"Removing child '{name}' from container '{self.path or 'root'}'", status='debug', process='_remove')
+                Log(f"Removing child '{name}' from container '{self.path or 'root'}'", status='info', process='_remove')
                 del self._children[name]
                 # Find root and save entire updated hierarchy
                 root = self.__find_root()
