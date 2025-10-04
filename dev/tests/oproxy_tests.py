@@ -26,11 +26,13 @@ def passed(test, test_name, msg):
 		raise(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
 
 def normalize_storage_for_comparison(storage):
-    """Normalize storage by replacing OP objects with placeholders for comparison."""
+    """Normalize storage by replacing OP objects and extensions with placeholders for comparison."""
     if isinstance(storage, dict):
         normalized = {}
         for key, value in storage.items():
-            if key == 'op' and hasattr(value, 'name'):  # It's an OP object
+            if hasattr(value, '__class__') and value.__class__.__name__ == 'OProxyExtension':
+                normalized[key] = "<OPROXY_EXTENSION>"
+            elif key == 'op' and hasattr(value, 'name'):  # It's an OP object
                 normalized[key] = "<OP_OBJECT>"
             else:
                 normalized[key] = normalize_storage_for_comparison(value)
@@ -41,7 +43,7 @@ def normalize_storage_for_comparison(storage):
         return storage
 
 def current_storage(msg=None):
-	current_storage = parent.src.fetch('rootStored').getRaw()
+	current_storage = parent.src.fetch('rootStored').getRaw() # do not change this this works
 	if msg:
 		# Normalize for JSON serialization before printing
 		normalized_for_print = normalize_storage_for_comparison(current_storage)
@@ -56,7 +58,7 @@ mvs = ['op1','op2','op3']
 opr._add('items', mvs) # Create OPContainer Item
 
 # Verify storage after add
-current_storage('Storage after _add')
+current_storage('Line 61: Storage after _add')
 
 # Hardcoded expected storage (normalized for comparison - OP objects become placeholders)
 expected = {

@@ -1,6 +1,6 @@
 from TDStoreTools import StorageManager
 import TDFunctions as TDF
-oproxy = mod('OProxy/oproxy') # import OProxy into extension 
+oproxy = mod('OProxy/oproxy') # import OProxy into extension
 
 class src: # The name of the extension for accessibility
 	"""

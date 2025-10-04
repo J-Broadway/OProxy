@@ -702,7 +702,7 @@ class OPContainer(OPBaseWrapper):
                            f"Use _add() to create containers or access existing ones: {list(self._children.keys())}")
 
     def __setattr__(self, name, value):
-        if name.startswith('_') or name in ('_children', '_ownerComp', 'OProxies'):
+        if name.startswith('_') or name in ('_children', '_ownerComp', 'OProxies') or isinstance(value, OProxyExtension):
             object.__setattr__(self, name, value)  # Bypass OPBaseWrapper's restriction
         else:
             for child in self._children.values():
@@ -826,6 +826,12 @@ class OPContainer(OPBaseWrapper):
         try:
             self._refresh_ops(target)
             self._refresh_extensions(target)
+
+            # For root containers, load children from storage first
+            if self.is_root and hasattr(self, 'OProxies'):
+                children_data = self.OProxies.get('children', {})
+                if children_data:
+                    self._load_nested_containers(self, children_data, "")
 
             # Recursive refresh of children
             for child in self._children.values():
@@ -1095,8 +1101,12 @@ class OPContainer(OPBaseWrapper):
             # Store in internal registry for management
             self._extensions[attr_name] = extension
 
-            # Update storage with extension metadata
-            self._update_storage()
+            # Update storage by finding root and updating
+            root = self
+            while root._parent is not None:
+                root = root._parent
+            if hasattr(root, 'OProxies'):
+                root._update_storage()
 
             Log(f"Extension '{attr_name}' added to container '{self.path or 'root'}'", status='info', process='_extend')
         except Exception as e:

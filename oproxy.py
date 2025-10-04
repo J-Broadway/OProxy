@@ -102,7 +102,9 @@ class root(OPContainer):
         Args:
             flush_logger (bool): Whether to flush the logger. Defaults to True.
         """
-        self.OProxies = {'children': {}, 'extensions': {}}
+        # Clear the existing storage dict instead of replacing it to maintain StorageManager reference
+        self.OProxies.clear()
+        self.OProxies.update({'children': {}, 'extensions': {}})
         if flush_logger:
             Log.flush()  # Clear logging state and log files for fresh start
         self._refresh()  # Reload from the now-empty storage
