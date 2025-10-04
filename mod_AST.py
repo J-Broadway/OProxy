@@ -3,7 +3,7 @@
 import td
 import re
 import ast
-log           = mod('utils').log            # Import log function for error handling
+log           = parent.opr.Log              # Import OPLogger for error handling
 td_isinstance = mod('utils').td_isinstance  # Import centralized TD type checking
 
 
@@ -82,20 +82,32 @@ def extract_block_text(code_text, target_name, target_type=None):
         block_lines = lines[decorator_start:end]
         return '\n'.join(block_lines)
 
-def Main(cls=None, func=None, op=None, logger=None):
+def Main(cls=None, func=None, op=None, log=None):
     """
-    Dynamically extracts, compiles, and executes a specific class or function from a Text DAT,
-    then returns the resulting class type or function object without attaching to globals or immediate execution.
+    Dynamically extracts, compiles, and executes a specific class or function from a Text DAT without
+    running the entire DAT then returns the resulting class type or function object without immediate execution.
     
     Args:
         cls (str, optional): The name of the class to extract; mutually exclusive with func.
         func (str, optional): The name of the function to extract; mutually exclusive with cls.
         op (td.textDAT or str, optional): The Text DAT operator or its path string containing the source code;
                                          defaults to last arg if positional.
-        logger (callable, optional): Logger function to use for error reporting; defaults to utils.log.
+        log (callable, optional): log function to use for error reporting; defaults to OPLogger.
     
     Returns:
         The class type or function object for use in OProxy's _extend method or explicit invocation.
+        
+    Example Usage:
+
+        # In Separate DAT
+        def hello():
+            print('hello world')
+        
+        # From Another DAT
+        mod_AST = mod('mod_AST').Main
+
+        yo = mod_AST(func='hello', op='text1', log=True) # Set instance
+        yo() # Returns 'hello world'
     
     Raises:
         ValueError: If 'op' is invalid, target not found, no cls/func specified, or extracted object is unsupported.
@@ -132,8 +144,8 @@ def Main(cls=None, func=None, op=None, logger=None):
             raise ValueError(f"Extracted '{target_name}' is {type(obj).__name__}, neither a class nor a function")
     except Exception as e:
         error_msg = f"Error executing block for '{target_name}' from {op.path}: {str(e)} at line {e.lineno if hasattr(e, 'lineno') else 'unknown'}"
-        if logger:
-            logger(error_msg, status='error', process='Execute')
+        if log:
+            log(error_msg, status='error', process='mod_AST:Execute')
         else:
             log(error_msg)
         raise
