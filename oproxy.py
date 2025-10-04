@@ -4,6 +4,7 @@ from OPBaseWrapper import OPContainer
 
 # Import utils module for logging functions
 utils = mod('utils')
+Log = parent.opr.Log
 
 '''
 NOTES FOR LLMs:
@@ -39,7 +40,7 @@ class root(OPContainer):
 
         # Any root-specific setup here (e.g., logging if needed later)
         self._refresh()  # Load persisted hierarchy from storage
-        utils.log("OProxy root initialized")
+        Log("OProxy root initialized", status='info', process='Init')
 
     def _migrate_storage_format(self):
         """Migrate old string-based OP storage to new object format."""
@@ -58,7 +59,7 @@ class root(OPContainer):
                                 'extensions': {}
                             }
                         else:
-                            utils.log(f"WARNING: Could not migrate invalid OP path '{op_info}' for '{op_name}'")
+                            Log(f"Could not migrate invalid OP path '{op_info}' for '{op_name}'", status='warning', process='Migration')
                     else:
                         # Already in new format or other structure
                         migrated_ops[op_name] = op_info
@@ -71,7 +72,7 @@ class root(OPContainer):
 
         # Migrate the root storage
         if hasattr(self, 'OProxies') and 'children' in self.OProxies:
-            utils.log("Checking for storage format migration...")
+            Log("Checking for storage format migration", status='debug', process='Migration')
             needs_migration = False
 
             # Check if any ops are stored as strings (old format)
@@ -89,16 +90,16 @@ class root(OPContainer):
             check_for_old_format(self.OProxies)
 
             if needs_migration:
-                utils.log("Migrating storage from old string format to new object format...")
+                Log("Migrating storage from old string format to new object format", status='info', process='Migration')
                 migrate_container_ops(self.OProxies)
-                utils.log("Storage migration completed")
+                Log("Storage migration completed", status='info', process='Migration')
             else:
-                utils.log("Storage already in new format, no migration needed")
+                Log("Storage already in new format, no migration needed", status='debug', process='Migration')
 
     def _clear(self):
         """Clear all stored OProxy data and reload empty hierarchy."""
         self.OProxies = {'children': {}, 'extensions': {}}
-        self.Log.flush()  # Clear logging state and log files for fresh start
+        Log.flush()  # Clear logging state and log files for fresh start
         self._refresh()  # Reload from the now-empty storage
 
 

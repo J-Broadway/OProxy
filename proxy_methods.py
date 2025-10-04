@@ -79,14 +79,14 @@ def proxy_remove(self, to_remove=None):
                         # Clean up lookup
                         parent_container._by_name_or_path.pop(op_to_remove.name, None)
                         parent_container._by_name_or_path.pop(op_to_remove.path, None)
-                        log(f"Removed OP '{op_name}' from parent container")
+                        self.Log(f"Removed OP '{op_name}' from parent container", status='info', process='_remove')
                         
                         # Update storage
                         _update_storage(parent_container)
                         
                         # Remove the entire branch from storage including extensions
                         hierarchical_storage.remove_node(self._opr.OProxies, self._dictPath, recursive=True)
-                        log(f"Removed entire branch '{self._dictPath}' from storage")
+                        self.Log(f"Removed entire branch '{self._dictPath}' from storage", status='info', process='_remove')
                         
                         # Additional cleanup: explicitly remove any remaining extension data
                         # This ensures complete cleanup of hybrid container data
@@ -95,18 +95,18 @@ def proxy_remove(self, to_remove=None):
                             if node and 'Extensions' in node:
                                 ext_count = len(node['Extensions'])
                                 if ext_count > 0:
-                                    log(f"Cleaned up {ext_count} orphaned extension(s) from '{self._dictPath}'")
+                                    self.Log(f"Cleaned up {ext_count} orphaned extension(s) from '{self._dictPath}'", status='info', process='Cleanup')
                                     del node['Extensions']
                                 else:
-                                    log(f"No extensions found at '{self._dictPath}' during cleanup")
+                                    self.Log(f"No extensions found at '{self._dictPath}' during cleanup", status='debug', process='Cleanup')
                             else:
-                                log(f"No node or Extensions found at '{self._dictPath}' during cleanup")
+                                self.Log(f"No node or Extensions found at '{self._dictPath}' during cleanup", status='debug', process='Cleanup')
                         except Exception as e:
-                            log(f"Error during extension cleanup for '{self._dictPath}': {e}", level='warning')
+                            self.Log(f"Error during extension cleanup for '{self._dictPath}': {e}", status='warning', process='Cleanup')
                     else:
-                        log(f"OP '{op_name}' not found in parent container", level='warning')
+                        self.Log(f"OP '{op_name}' not found in parent container", status='warning', process='_remove')
                 else:
-                    log(f"Parent container not found for path '{parent_path}'", level='warning')
+                    self.Log(f"Parent container not found for path '{parent_path}'", status='warning', process='_remove')
             else:
                 # Root level removal
                 oproxies_raw = self._opr.OProxies.getRaw()
@@ -120,12 +120,12 @@ def proxy_remove(self, to_remove=None):
                     if hasattr(self._opr, 'ownerComp') and hasattr(self._opr.ownerComp, 'store'):
                         self._opr.ownerComp.store['OProxies'] = oproxies_raw
                     self._opr.OProxies = oproxies_raw
-                    log(f"Removed root OP '{op_name}'")
+                    self.Log(f"Removed root OP '{op_name}'", status='info', process='_remove')
                     
                     if ext_count > 0:
-                        log(f"Cleaned up {ext_count} extension(s) from root OP '{op_name}'")
+                        self.Log(f"Cleaned up {ext_count} extension(s) from root OP '{op_name}'", status='info', process='Cleanup')
                 else:
-                    log(f"Root OP '{op_name}' not found", level='warning')
+                    self.Log(f"Root OP '{op_name}' not found", status='warning', process='_remove')
             
             return self  # Return self for chaining
         
@@ -140,24 +140,24 @@ def proxy_remove(self, to_remove=None):
                 if child_proxy and hasattr(child_proxy, '_remove'):
                     try:
                         child_proxy._remove()  # Recursive call
-                        log(f"Removed child proxy '{child_name}'")
+                        self.Log(f"Removed child proxy '{child_name}'", status='info', process='_remove')
                     except Exception as e:
-                        log(f"Error removing child proxy '{child_name}': {e}", level='warning')
+                        self.Log(f"Error removing child proxy '{child_name}': {e}", status='warning', process='_remove')
                         # Fall back to direct storage removal
                         child_path = f"{self._dictPath}.{child_name}" if self._dictPath else child_name
                         try:
                             hierarchical_storage.remove_node(self._opr.OProxies, child_path, recursive=True)
-                            log(f"Removed child '{child_name}' directly from storage (fallback)")
+                            self.Log(f"Removed child '{child_name}' directly from storage (fallback)", status='info', process='_remove')
                         except Exception as e2:
-                            log(f"Error removing child '{child_name}' from storage: {e2}", level='warning')
+                            self.Log(f"Error removing child '{child_name}' from storage: {e2}", status='warning', process='_remove')
                 else:
                     # Child proxy doesn't exist as attribute, remove directly from storage
                     child_path = f"{self._dictPath}.{child_name}" if self._dictPath else child_name
                     try:
                         hierarchical_storage.remove_node(self._opr.OProxies, child_path, recursive=True)
-                        log(f"Removed child '{child_name}' directly from storage")
+                        self.Log(f"Removed child '{child_name}' directly from storage", status='info', process='_remove')
                     except Exception as e:
-                        log(f"Error removing child '{child_name}' from storage: {e}", level='warning')
+                        self.Log(f"Error removing child '{child_name}' from storage: {e}", status='warning', process='_remove')
         
         # Remove self from parent
         if hasattr(self, '_opr') and hasattr(self, '_dictPath'):
@@ -177,7 +177,7 @@ def proxy_remove(self, to_remove=None):
                     if hasattr(self._opr, 'ownerComp') and hasattr(self._opr.ownerComp, 'store'):
                         self._opr.ownerComp.store['OProxies'] = oproxies_raw
                     self._opr.OProxies = oproxies_raw
-                    log(f"Removed root container '{name}' from storage")
+                    self.Log(f"Removed root container '{name}' from storage", status='info', process='_remove')
         
         # Clean up attribute from parent
         if hasattr(self, '_parent'):  # Assume _parent back-ref added if needed
@@ -200,7 +200,7 @@ def proxy_remove(self, to_remove=None):
                 try:
                     item = td_isinstance(item, 'op', allow_string=False)
                 except (TypeError, ValueError) as e:
-                    log(f"Invalid OP in remove list: {e}", level='warning')
+                    self.Log(f"Invalid OP in remove list: {e}", status='warning', process='_remove')
                     continue
                 for wrapped in self:
                     if wrapped.op == item:
@@ -219,7 +219,7 @@ def proxy_remove(self, to_remove=None):
                 self._by_name_or_path.pop(op.path, None)
                 removed = True
             else:
-                log(f"OP not found in proxy: {item_desc}")
+                self.Log(f"OP not found in proxy: {item_desc}", status='warning', process='Proxy')
         
         if removed:
             # Persist only if something was removed
@@ -237,11 +237,11 @@ def proxy_refresh(self):
     
     # Ensure the node has the required structure
     if not node:
-        log(f"No storage node found for path '{dict_path}'", level='warning', process='proxy_refresh')
+        self.Log(f"No storage node found for path '{dict_path}'", status='warning', process='_refresh')
         return self
     
     if 'OPs' not in node:
-        log(f"Storage node missing 'OPs' key for path '{dict_path}', initializing", level='warning', process='proxy_refresh')
+        self.Log(f"Storage node missing 'OPs' key for path '{dict_path}', initializing", status='warning', process='_refresh')
         node['OPs'] = {}
     
     mapping = node['OPs']
@@ -258,14 +258,14 @@ def proxy_refresh(self):
             changes.append(('update', key, current_name, op))
     
     if not changes:
-        log("No changes found")
+        self.Log("No changes found", status='debug', process='_refresh')
     else:
         # Apply changes
         for change in changes:
             if change[0] == 'remove':
                 key, op = change[1], change[2]
                 op_name = op.name if op else key
-                log(f"{op_name} is not found, if moved use Update() to update path")
+                self.Log(f"{op_name} is not found, if moved use Update() to update path", status='warning', process='_refresh')
                 # Do not auto-delete; keep in mapping for potential recovery
             elif change[0] == 'update':
                 old_key, new_key, op = change[1:]
@@ -290,7 +290,7 @@ def proxy_refresh(self):
         
         # Print dynamic statements for refreshed OPs
         for op, old_key, new_key in refreshed_ops:
-            log(f"OP {op.path}: name changed from '{old_key}' -> '{new_key}'", process='Refresh')
+            self.Log(f"OP {op.path}: name changed from '{old_key}' -> '{new_key}'", status='info', process='_refresh')
     
     
     # Recurse to children

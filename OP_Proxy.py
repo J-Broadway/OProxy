@@ -67,7 +67,7 @@ class OP_Proxy:
                 raise
             
             try:
-                obj = ast_mod.Main(cls=cls, func=func, op=dat)
+                obj = ast_mod.Main(cls=cls, func=func, op=dat, logger=self.Log)
                 if call and args is not None and not isinstance(args, (tuple, list)):
                     raise TypeError("args must be a tuple or list of positional arguments when call=True")
                 
@@ -104,10 +104,10 @@ class OP_Proxy:
                 })
         else:
             # Non-persistent: attach directly to custom_attrs, skip storage
-            log(f"Non-persistent extension '{attr_name}' added to {self._dictPath}; won't survive project reload or extension re-init", level='warning')
+            self.Log(f"Non-persistent extension '{attr_name}' added to {self._dictPath}; won't survive project reload or extension re-init", status='warning', process='_extend')
             self._custom_attrs[attr_name] = cls or func  # Use cls/func directly if no dat
         
-        log(f"Extension '{attr_name}' added successfully", process='_extend')
+        self.Log(f"Extension '{attr_name}' added successfully", status='info', process='_extend')
         return self  # Allow chaining
 
     def _remove(self):

@@ -82,7 +82,7 @@ def extract_block_text(code_text, target_name, target_type=None):
         block_lines = lines[decorator_start:end]
         return '\n'.join(block_lines)
 
-def Main(cls=None, func=None, op=None):
+def Main(cls=None, func=None, op=None, logger=None):
     """
     Dynamically extracts, compiles, and executes a specific class or function from a Text DAT,
     then returns the resulting class type or function object without attaching to globals or immediate execution.
@@ -92,6 +92,7 @@ def Main(cls=None, func=None, op=None):
         func (str, optional): The name of the function to extract; mutually exclusive with cls.
         op (td.textDAT or str, optional): The Text DAT operator or its path string containing the source code;
                                          defaults to last arg if positional.
+        logger (callable, optional): Logger function to use for error reporting; defaults to utils.log.
     
     Returns:
         The class type or function object for use in OProxy's _extend method or explicit invocation.
@@ -130,5 +131,9 @@ def Main(cls=None, func=None, op=None):
         else:
             raise ValueError(f"Extracted '{target_name}' is {type(obj).__name__}, neither a class nor a function")
     except Exception as e:
-        log(f"Error executing block for '{target_name}' from {op.path}: {str(e)} at line {e.lineno if hasattr(e, 'lineno') else 'unknown'}")
+        error_msg = f"Error executing block for '{target_name}' from {op.path}: {str(e)} at line {e.lineno if hasattr(e, 'lineno') else 'unknown'}"
+        if logger:
+            logger(error_msg, status='error', process='Execute')
+        else:
+            log(error_msg)
         raise

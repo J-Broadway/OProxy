@@ -10,6 +10,7 @@ in comment vs codebase are found.
 
 # Import utils module for storage functions
 utils = mod('utils')
+Log = parent.opr.Log
 
 class OPBaseWrapper(ABC):
     """Abstract Component: Common interface for leaves and composites."""
@@ -78,7 +79,7 @@ class OPLeaf(OPBaseWrapper):
         any extensions associated with this leaf.
         """
         if self._parent is None:
-            utils.log("DEBUG _remove: Cannot remove leaf - no parent container")
+            Log("Cannot remove leaf - no parent container", status='warning', process='_remove')
             return self
 
         # Find this leaf in parent's children
@@ -90,7 +91,7 @@ class OPLeaf(OPBaseWrapper):
                 break
 
         if my_name is not None:
-            utils.log(f"DEBUG _remove: Removing leaf '{my_name}' from parent container")
+            Log(f"Removing leaf '{my_name}' from parent container", status='debug', process='_remove')
             del parent_container._children[my_name]
 
             # Find root by traversing up parent chain (avoid name mangling issues)
@@ -108,7 +109,7 @@ class OPLeaf(OPBaseWrapper):
             # utils.log(f"DEBUG _remove: TODO - Clean up extensions for leaf '{my_name}'")
 
         else:
-            utils.log("DEBUG _remove: Could not find leaf in parent container children")
+            Log("Could not find leaf in parent container children", status='warning', process='_remove')
 
         return self
 
@@ -120,7 +121,7 @@ class OPLeaf(OPBaseWrapper):
         try:
             self._refresh_extensions(target)
         except Exception as e:
-            utils.log(f"Leaf refresh failed for {self.path}: {e}")
+            Log(f"Leaf refresh failed for {self.path}: {e}", status='error', process='_refresh')
 
     def _refresh_extensions(self, target=None):
         """Placeholder for extension refresh logic - will re-extract from DATs when _extend() is implemented"""
@@ -175,8 +176,8 @@ class OProxyExtension(OPBaseWrapper):
 
         For now, this is a placeholder that logs the intended behavior.
         """
-        utils.log("DEBUG _remove: Extension removal placeholder - not yet implemented")
-        utils.log("Future: Will remove extension from parent and clean up storage")
+        Log("Extension removal placeholder - not yet implemented", status='debug', process='_remove')
+        Log("Future: Will remove extension from parent and clean up storage", status='debug', process='_remove')
 
         # Placeholder for future extension removal logic:
         # if self._parent:
@@ -254,7 +255,7 @@ class OPContainer(OPBaseWrapper):
 
     def _add_init(self, name, op):
         """Create new container with initial OPs"""
-        utils.log(f"DEBUG _add_init: Creating new container '{name}'")
+        Log(f"Creating new container '{name}'", status='debug', process='_add')
 
         # Validate the container name
         self._validate_child_name(self, name)
@@ -262,40 +263,40 @@ class OPContainer(OPBaseWrapper):
         # Normalize op parameter to list of OP objects
         if not isinstance(op, (list, tuple)):
             op_list = [op]
-            utils.log(f"DEBUG _add_init: Single OP provided, converted to list: {op}")
+            Log(f"Single OP provided, converted to list: {op}", status='debug', process='_add')
         else:
             op_list = op
-            utils.log(f"DEBUG _add_init: List of OPs provided, count: {len(op_list)}")
+            Log(f"List of OPs provided, count: {len(op_list)}", status='debug', process='_add')
 
         # Validate and convert all OPs (fail fast on first invalid)
         validated_ops = []
         for i, op_item in enumerate(op_list):
-            utils.log(f"DEBUG _add_init: Validating OP {i+1}/{len(op_list)}: {op_item}")
+            Log(f"Validating OP {i+1}/{len(op_list)}: {op_item}", status='debug', process='_add')
             try:
                 validated_op = td_isinstance(op_item, 'op') # TouchDesigner OP Type Checking
                 validated_ops.append(validated_op)
-                utils.log(f"DEBUG _add_init: Validated OP: {validated_op.name} (path: {validated_op.path})")
+                Log(f"Validated OP: {validated_op.name} (path: {validated_op.path})", status='debug', process='_add')
             except Exception as e:
                 raise ValueError(f"Failed to validate OP '{op_item}': {e}")
 
         # Create new container with proper path
         child_path = f"{self.path}.{name}" if self.path else name
-        utils.log(f"DEBUG _add_init: Creating container with path '{child_path}'")
+        Log(f"Creating container with path '{child_path}'", status='debug', process='_add')
         container = OPContainer(path=child_path, parent=self)
 
         # Add validated OPs as leaves to the container
-        utils.log(f"DEBUG _add_init: Adding {len(validated_ops)} OPs as leaves to container '{name}'")
+        Log(f"Adding {len(validated_ops)} OPs as leaves to container '{name}'", status='debug', process='_add')
         for validated_op in validated_ops:
             leaf_path = f"{child_path}.{validated_op.name}"
-            utils.log(f"DEBUG _add_init: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
+            Log(f"Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'", status='debug', process='_add')
             leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
             container._children[validated_op.name] = leaf
 
         # Add container to this container's children
-        utils.log(f"DEBUG _add_init: Adding container '{name}' to parent children dict")
+        Log(f"Adding container '{name}' to parent children dict", status='debug', process='_add')
         self._children[name] = container
 
-        utils.log(f"DEBUG _add_init: Successfully created container '{name}' with {len(validated_ops)} OPs")
+        Log(f"Successfully created container '{name}' with {len(validated_ops)} OPs", status='info', process='_add')
 
         # Store in TouchDesigner storage by finding root and saving entire hierarchy
         root = self.__find_root()
@@ -306,32 +307,32 @@ class OPContainer(OPBaseWrapper):
 
     def _add_insert(self, container, op):
         """Add OPs to existing container"""
-        utils.log(f"DEBUG _add_insert: Adding to existing container '{container.path or 'root'}'")
+        Log(f"Adding to existing container '{container.path or 'root'}'", status='debug', process='_add')
 
         # Normalize op parameter to list of OP objects
         if not isinstance(op, (list, tuple)):
             op_list = [op]
-            utils.log(f"DEBUG _add_insert: Single OP provided, converted to list: {op}")
+            Log(f"Single OP provided, converted to list: {op}", status='debug', process='_add')
         else:
             op_list = op
-            utils.log(f"DEBUG _add_insert: List of OPs provided, count: {len(op_list)}")
+            Log(f"List of OPs provided, count: {len(op_list)}", status='debug', process='_add')
 
         # Validate and convert all OPs (fail fast on first invalid)
         validated_ops = []
         added_count = 0
 
         for i, op_item in enumerate(op_list):
-            utils.log(f"DEBUG _add_insert: Validating OP {i+1}/{len(op_list)}: {op_item}")
+            Log(f"Validating OP {i+1}/{len(op_list)}: {op_item}", status='debug', process='_add')
             try:
                 validated_op = td_isinstance(op_item, 'op') # TouchDesigner OP Type Checking
 
                 # Check if OP already exists in container
                 if validated_op.name in container._children:
-                    utils.log(f"DEBUG _add_insert: OP '{validated_op.name}' already exists in container - skipping")
+                    Log(f"OP '{validated_op.name}' already exists in container - skipping", status='warning', process='_add')
                     continue
 
                 validated_ops.append(validated_op)
-                utils.log(f"DEBUG _add_insert: Validated OP: {validated_op.name} (path: {validated_op.path})")
+                Log(f"Validated OP: {validated_op.name} (path: {validated_op.path})", status='debug', process='_add')
                 added_count += 1
 
             except Exception as e:
@@ -339,21 +340,21 @@ class OPContainer(OPBaseWrapper):
 
         # Add validated OPs as leaves to the existing container
         if added_count > 0:
-            utils.log(f"DEBUG _add_insert: Adding {added_count} new OPs to existing container '{container.path or 'root'}'")
+            Log(f"Adding {added_count} new OPs to existing container '{container.path or 'root'}'", status='debug', process='_add')
             for validated_op in validated_ops:
                 leaf_path = f"{container.path}.{validated_op.name}" if container.path else validated_op.name
-                utils.log(f"DEBUG _add_insert: Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'")
+                Log(f"Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'", status='debug', process='_add')
                 leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
                 container._children[validated_op.name] = leaf
 
-            utils.log(f"DEBUG _add_insert: Successfully added {added_count} OPs to container '{container.path or 'root'}'")
+            Log(f"Successfully added {added_count} OPs to container '{container.path or 'root'}'", status='info', process='_add')
 
             # Update TouchDesigner storage
             root = self.__find_root()
             if hasattr(root, 'OProxies'):
                 root.__save_to_storage()
         else:
-            utils.log(f"DEBUG _add_insert: No new OPs to add to container '{container.path or 'root'}'")
+            Log(f"No new OPs to add to container '{container.path or 'root'}'", status='warning', process='_add')
 
         return added_count
 
@@ -388,13 +389,13 @@ class OPContainer(OPBaseWrapper):
 
         Future: Use _extend() for monkey patching magic methods
         '''
-        utils.log(f"DEBUG _add: Processing '{name}' in container '{self.path or 'root'}'")
+        Log(f"Processing '{name}' in container '{self.path or 'root'}'", status='debug', process='_add')
 
         # Check if container already exists
         if name in self._children:
             existing = self._children[name]
             if isinstance(existing, OPContainer):
-                utils.log(f"'{name}' OPContainer already exists - adding to existing container")
+                Log(f"'{name}' OPContainer already exists - adding to existing container", status='info', process='_add')
                 self._add_insert(existing, op)
             else:
                 raise ValueError(f"Cannot add container '{name}' - already exists as OP in '{self.path or 'root'}'")
@@ -424,7 +425,7 @@ class OPContainer(OPBaseWrapper):
                         break
 
                 if my_name is not None:
-                    utils.log(f"DEBUG _remove: Removing self ('{my_name}') from parent")
+                    Log(f"Removing self ('{my_name}') from parent", status='debug', process='_remove')
                     del parent_container._children[my_name]
                     # Find root and save entire updated hierarchy
                     root = parent_container.__find_root()
@@ -432,9 +433,9 @@ class OPContainer(OPBaseWrapper):
                         utils.remove(self, root.OProxies, parent_container.path)
                         root.__save_to_storage()
                 else:
-                    utils.log("DEBUG _remove: Could not find self in parent children")
+                    Log("Could not find self in parent children", status='warning', process='_remove')
             else:
-                utils.log("DEBUG _remove: Cannot remove root container")
+                Log("Cannot remove root container", status='warning', process='_remove')
             return self
 
         # Case 2: _remove([names]) - remove multiple children
@@ -447,7 +448,7 @@ class OPContainer(OPBaseWrapper):
         else:
             if name in self._children:
                 container_to_remove = self._children[name]
-                utils.log(f"DEBUG _remove: Removing child '{name}' from container '{self.path or 'root'}'")
+                Log(f"Removing child '{name}' from container '{self.path or 'root'}'", status='debug', process='_remove')
                 del self._children[name]
                 # Find root and save entire updated hierarchy
                 root = self.__find_root()
@@ -455,7 +456,7 @@ class OPContainer(OPBaseWrapper):
                     utils.remove(container_to_remove, root.OProxies, self.path)
                     root.__save_to_storage()
             else:
-                utils.log(f"DEBUG _remove: Child '{name}' not found in container '{self.path or 'root'}'")
+                Log(f"Child '{name}' not found in container '{self.path or 'root'}'", status='warning', process='_remove')
             return self
 
     def __find_root(self):
@@ -520,7 +521,7 @@ class OPContainer(OPBaseWrapper):
         if not self.is_root:
             raise RuntimeError("__save_to_storage() can only be called on root containers")
 
-        utils.log("DEBUG __save_to_storage: Saving container hierarchy to storage...")
+        Log("Saving container hierarchy to storage", status='debug', process='_update_storage')
 
         # Build the complete nested storage structure
         children_data = self.__build_storage_structure()
@@ -530,7 +531,7 @@ class OPContainer(OPBaseWrapper):
         self.OProxies['children'].clear()
         self.OProxies['children'].update(children_data)
 
-        utils.log(f"DEBUG __save_to_storage: Saved {len(children_data)} top-level containers to storage")
+        Log(f"Saved {len(children_data)} top-level containers to storage", status='info', process='_update_storage')
 
     def _save_to_storage(self):
         """Public method to save the container hierarchy to storage."""
@@ -549,7 +550,7 @@ class OPContainer(OPBaseWrapper):
             self.OProxies['children'] = container_data
 
         except Exception as e:
-            utils.log(f"ERROR _update_storage: Failed to update storage: {e}")
+            Log(f"Failed to update storage: {e}", status='error', process='_update_storage')
             raise
 
     def _update_container_in_storage(self, container_data):
@@ -616,7 +617,7 @@ class OPContainer(OPBaseWrapper):
                 self._update_storage()
 
         except Exception as e:
-            utils.log(f"Container refresh failed for {self.path}: {e}")
+            Log(f"Container refresh failed for {self.path}: {e}", status='error', process='_refresh')
 
     def _refresh_ops(self, target=None):
         """Load stored container data and check for OP name changes"""
@@ -708,7 +709,7 @@ class OPContainer(OPBaseWrapper):
     def _load_nested_containers(self, parent_container, children_data, parent_path):
         """Helper method to recursively load nested containers."""
         for container_name, container_data in children_data.items():
-            utils.log(f"DEBUG _refresh: Loading nested container '{container_name}' under '{parent_path}'")
+            Log(f"Loading nested container '{container_name}' under '{parent_path}'", status='debug', process='_refresh')
 
             container_path = f"{parent_path}.{container_name}"
             container = OPContainer(path=container_path, parent=parent_container)
@@ -727,7 +728,7 @@ class OPContainer(OPBaseWrapper):
                     stored_op = op_info.get('op')  # Raw OP object for name change detection
                     op_extensions = op_info.get('extensions', {})
 
-                utils.log(f"DEBUG _refresh: Loading nested OP '{op_name}' from '{op_path}'")
+                Log(f"Loading nested OP '{op_name}' from '{op_path}'", status='debug', process='_refresh')
 
                 # Try to get OP by stored path first
                 op = td.op(op_path) if op_path else None
@@ -735,13 +736,13 @@ class OPContainer(OPBaseWrapper):
                 # If that fails but we have a stored OP object, use it (handles renames)
                 if not (op and op.valid) and stored_op and stored_op.valid:
                     op = stored_op
-                    utils.log(f"DEBUG _refresh: Using stored OP object for nested '{op_name}' (original path may have changed)")
+                    Log(f"Using stored OP object for nested '{op_name}' (original path may have changed)", status='debug', process='_refresh')
 
                 if op and op.valid:
                     # Check for name changes
                     current_name = op.name
                     if op_name != current_name:
-                        utils.log(f"DEBUG _refresh: Nested OP name changed from '{op_name}' to '{current_name}', updating mapping")
+                        Log(f"Nested OP name changed from '{op_name}' to '{current_name}', updating mapping", status='info', process='_refresh')
                         # Use current name as key instead of stored name
                         actual_key = current_name
                     else:
@@ -760,7 +761,7 @@ class OPContainer(OPBaseWrapper):
 
                     container._children[actual_key] = leaf
                 else:
-                    utils.log(f"DEBUG _refresh: Warning - Nested OP '{op_path}' not found or invalid, skipping")
+                    Log(f"Nested OP '{op_path}' not found or invalid, skipping", status='warning', process='_refresh')
 
             # Recursively load deeper nesting
             nested_children = container_data.get('children', {})

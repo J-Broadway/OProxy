@@ -1,14 +1,5 @@
-﻿# utils.dat
+# utils.dat
 import td
-
-
-def log(message):
-    """
-    Logging utility for OProxy system.
-    Currently uses print() for output - can be changed to use td.debug() or other logging as needed.
-    """
-    print(message)
-
 
 def store(container, storage_dict, parent_path=""):
     """
