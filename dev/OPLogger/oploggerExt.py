@@ -3,7 +3,7 @@ import TDFunctions as TDF
 
 class oploggerExt:
 	"""
-	oploggerExt
+	Nothing Here Yet
 	"""
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp
