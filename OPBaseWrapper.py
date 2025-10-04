@@ -52,7 +52,6 @@ class OPBaseWrapper(ABC):
         - func (str): Function name to extract from DAT
         - dat (DAT): Text DAT containing the extension (required)
         - args (tuple|list): Arguments for instantiation/calling when call=True
-        - call (bool): Whether to instantiate/call immediately
         - monkey_patch (bool): Allow overwriting existing attributes
 
         Returns:
@@ -62,6 +61,25 @@ class OPBaseWrapper(ABC):
         - ValueError: Invalid parameters, naming conflicts, extraction failures
         """
         pass
+
+    def _clear(self, flush_logger=True):
+        """
+        Clear all stored OProxy data and reload empty hierarchy.
+        Only works on root containers.
+
+        Args:
+            flush_logger (bool): Whether to flush the logger. Defaults to True.
+
+        Raises:
+            RuntimeError: If called on non-root container
+        """
+        root = self.__find_root()
+        if root is not self:
+            # Delegate to root
+            return root._clear(flush_logger)
+        else:
+            # This should be implemented by the root class
+            raise NotImplementedError("_clear must be implemented by root container class")
 
     # Shared proxy methods (implemented in subclasses)
     def __getattr__(self, name):

@@ -102,11 +102,25 @@ class root(OPContainer):
         Args:
             flush_logger (bool): Whether to flush the logger. Defaults to True.
         """
+        Log("Starting _clear operation", status='info', process='_clear')
+
         # Clear the existing storage dict instead of replacing it to maintain StorageManager reference
+        Log(f"Clearing OProxies storage with {len(self.OProxies.get('children', {}))} containers", status='debug', process='_clear')
         self.OProxies.clear()
         self.OProxies.update({'children': {}, 'extensions': {}})
-        if flush_logger:
-            Log.flush()  # Clear logging state and log files for fresh start
+        Log("Reset OProxies to empty state", status='debug', process='_clear')
+
+        # Clear in-memory hierarchy as well
+        Log(f"Clearing in-memory hierarchy with {len(self._children)} containers", status='debug', process='_clear')
+        self._children.clear()
+
+        Log("Reloading empty hierarchy", status='debug', process='_clear')
         self._refresh()  # Reload from the now-empty storage
+
+        if flush_logger:
+            Log("Flushing logger", status='debug', process='_clear')
+            Log.flush()  # Clear logging state and log files for fresh start
+
+        Log("_clear operation completed", status='info', process='_clear')
 
 
