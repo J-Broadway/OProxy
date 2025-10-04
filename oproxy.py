@@ -117,10 +117,9 @@ class root(OPContainer):
         Log("Reloading empty hierarchy", status='debug', process='_clear')
         self._refresh()  # Reload from the now-empty storage
 
-        if flush_logger:
-            Log("Flushing logger", status='debug', process='_clear')
-            Log.flush()  # Clear logging state and log files for fresh start
-
         Log("_clear operation completed", status='info', process='_clear')
+
+        if flush_logger:
+            Log.flush()  # Clear logging state and log files for fresh start
 
 
