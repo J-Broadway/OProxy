@@ -360,7 +360,7 @@ expected = {
 passed(current_storage() == expected, 'storage', 'Checking above test')
 
 info('Clearing storage!')
-opr._clear()
+opr._clear(flush_logger=False)
 print('==========TESTS COMPLETED==========')
 print('Remind me to add more _remove() tests when extensions are implemented')
 
