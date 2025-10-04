@@ -264,10 +264,8 @@ Call migration during root initialization if old format detected
 - [ ] Ensure container extensions are properly stored/loaded
 - [ ] Implement extension re-application during `_refresh()`
 
-### Migration Support
-- [ ] Create storage format migration function
-- [ ] Add migration trigger in root initialization
-- [ ] Test migration from old to new format
+### Logging
+- [ ] Use appropriate logging API from OPLogger process='Info' for public facing logs and 'Debug' for internal debuggin purposes.
 
 ### Testing
 - [ ] Update `expected` variables in `oproxy_tests.py` to match new OP object structure
