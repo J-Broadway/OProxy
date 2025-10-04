@@ -8,5 +8,3 @@ op3
 op4
 op5
 op6
-
-Reflect> "I saw your wish and reflect it back to you"
