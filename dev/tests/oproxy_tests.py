@@ -4,6 +4,16 @@ opr = parent.src.OProxy
 ''' Notes for LLM
 	Please do not edit unless explicitly asked
 '''
+# Make sure ops have correct names
+if t := op('changed1'):
+	t.name = 'op1'
+	
+if t := op('changed2'):
+	t.name = 'op2'
+	
+if t := op('changed3'):
+	t.name = 'op3'
+
 def info(msg):
 	print(f'\n{msg}\n')
 

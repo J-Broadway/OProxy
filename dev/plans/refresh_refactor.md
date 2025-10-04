@@ -74,10 +74,11 @@ opr.one._refresh()
 - Add basic error handling framework
 
 ```python
+@abstractmethod
 def _refresh(self, target=None):
-    """Abstract refresh method - implemented by subclasses"""
-    raise NotImplementedError("_refresh must be implemented by subclasses")
-```
+    """Abstract refresh method - implemented by subclasses."""
+    pass
+``` ✅ Implemented
 
 #### 1.2 Implement `OPContainer._refresh()`
 **File:** `OPBaseWrapper.py` (in `OPContainer` class)
@@ -101,7 +102,7 @@ def _refresh(self, target=None):
 
         # Update storage if this is root
         if self.is_root:
-            self._update_storage()
+            self._update_storage()  # ✅ Implemented
 
     except Exception as e:
         utils.log(f"Container refresh failed for {self.path}: {e}")
@@ -120,7 +121,7 @@ def _refresh(self, target=None):
         self._refresh_extensions(target)
     except Exception as e:
         utils.log(f"Leaf refresh failed for {self.path}: {e}")
-```
+``` ✅ Implemented
 
 #### 1.4 Add Helper Methods
 
@@ -223,7 +224,7 @@ opr (OPContainer)._refresh()
 │       └── _refresh_extensions() # Refresh movie2 extensions
 ├── audio._refresh()         # Recursive call to sibling container
 │   └── ... (similar flow)
-└── _update_storage()        # Save entire hierarchy to storage
+└── _update_storage()        # Save entire hierarchy to storage ✅
 ```
 
 ### Branch Refresh (New)
@@ -245,7 +246,7 @@ opr.media (OPContainer)._refresh()
 │   │   └── _refresh_extensions() # Refresh blur extensions
 │   └── effects.glow._refresh() # Recursive call to grandchild leaf
 │       └── _refresh_extensions() # Refresh glow extensions
-└── _update_storage()        # Find root and update storage
+└── _update_storage()        # Find root and update storage ✅
 ```
 
 ### Leaf Refresh (New)
@@ -314,7 +315,7 @@ opr.media._refresh()
 ├── _refresh_extensions() ✓
 ├── movie1._refresh() ✓
 ├── movie2._refresh() ✓ (but OP was removed)
-└── _update_storage() ✓
+└── _update_storage() ✓ ✅
 # Result: Partial success, missing OP logged but doesn't break refresh
 ```
 
@@ -354,14 +355,40 @@ opr.media._refresh()
 5. **Storage**: Changes persist correctly across project reloads
 6. **Performance**: No significant performance regression
 
-## Implementation Order
+## Implementation Status
 
-1. **Phase 1.1**: Abstract `_refresh()` method
-2. **Phase 1.4**: Helper methods (`_refresh_ops`, storage navigation)
-3. **Phase 1.2**: `OPContainer._refresh()` implementation
-4. **Phase 1.3**: `OPLeaf._refresh()` implementation
-5. **Phase 2**: Error handling improvements
-6. **Phase 3**: Testing and validation
+### ✅ Completed & Tested
+- **Phase 0**: `_update_storage()` infrastructure implemented ✅
+  - `_update_storage()` method added to `OPContainer`
+  - `_update_container_in_storage()` helper method added
+  - Storage update mechanism ready for refresh integration
+
+- **Phase 1.1**: Abstract `_refresh()` method ✅
+  - Added abstract `_refresh(self, target=None)` to `OPBaseWrapper`
+
+- **Phase 1.3**: `OPLeaf._refresh()` implementation ✅
+  - Implemented `_refresh()` and `_refresh_extensions()` placeholder in `OPLeaf`
+
+- **Phase 1.4**: Helper methods (`_refresh_ops`, storage navigation) ✅
+  - Implemented `_refresh_ops()` with OP name change detection
+  - Implemented `_refresh_extensions()` placeholder
+  - Implemented `_get_stored_container_data()` for storage navigation
+  - Fixed TDStoreTools.DependDict compatibility issues
+
+- **Phase 1.2**: `OPContainer._refresh()` implementation ✅
+  - Replaced root-only refresh with polymorphic implementation
+  - Added depth-first recursion for child containers
+  - Integrated with `_update_storage()` for root containers
+
+- **Integration Testing**: ✅ PASSED
+  - OP name change detection working correctly
+  - Container mapping updates properly
+  - API works with renamed OPs
+
+### 🚧 Next Steps
+1. **Phase 2**: Error handling improvements
+2. **Phase 3**: Comprehensive testing and validation
+3. **Future**: `target` parameter support for selective refresh
 
 ## Future Enhancements
 

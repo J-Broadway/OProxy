@@ -32,6 +32,11 @@ class OPBaseWrapper(ABC):
         """Return a string representation of the hierarchy."""
         pass
 
+    @abstractmethod
+    def _refresh(self, target=None):
+        """Abstract refresh method - implemented by subclasses."""
+        pass
+
     # Shared proxy methods (implemented in subclasses)
     def __getattr__(self, name):
         raise NotImplementedError
@@ -109,6 +114,18 @@ class OPLeaf(OPBaseWrapper):
 
     def _tree(self):
         return f"Leaf: {self._op.name} ({self._op.path})"
+
+    def _refresh(self, target=None):
+        """Refresh leaf extensions"""
+        try:
+            self._refresh_extensions(target)
+        except Exception as e:
+            utils.log(f"Leaf refresh failed for {self.path}: {e}")
+
+    def _refresh_extensions(self, target=None):
+        """Placeholder for extension refresh logic - will re-extract from DATs when _extend() is implemented"""
+        # TODO: Implement when _extend() is complete
+        pass
 
     def __getattr__(self, name):
         return getattr(self._op, name)
@@ -531,8 +548,6 @@ class OPContainer(OPBaseWrapper):
             # For root container, replace entire children structure
             self.OProxies['children'] = container_data
 
-            utils.log("DEBUG _update_storage: Updated storage for root container")
-
         except Exception as e:
             utils.log(f"ERROR _update_storage: Failed to update storage: {e}")
             raise
@@ -585,84 +600,110 @@ class OPContainer(OPBaseWrapper):
 
         return result
 
-    def _refresh(self):
-        """Refresh/reload the container hierarchy from TouchDesigner storage."""
-        if not self.is_root:
-            raise RuntimeError("_refresh() can only be called on root containers")
+    def _refresh(self, target=None):
+        """Refresh container and all descendants"""
+        try:
+            self._refresh_ops(target)
+            self._refresh_extensions(target)
 
-        utils.log("DEBUG _refresh: Loading container hierarchy from storage...")
+            # Recursive refresh of children
+            for child in self._children.values():
+                if isinstance(child, OPContainer):
+                    child._refresh()
 
-        # Clear existing children for fresh reload
-        self._children.clear()
+            # Update storage if this is root
+            if self.is_root:
+                self._update_storage()
 
-        # Load from storage
-        children_data = self.OProxies.get('children', {})
+        except Exception as e:
+            utils.log(f"Container refresh failed for {self.path}: {e}")
 
-        for container_name, container_data in children_data.items():
-            utils.log(f"DEBUG _refresh: Loading container '{container_name}'")
+    def _refresh_ops(self, target=None):
+        """Load stored container data and check for OP name changes"""
+        # Root containers don't have stored data for themselves
+        if not self.path:
+            return
 
-            # Create the container
-            container_path = container_name  # Root level containers
-            container = OPContainer(path=container_path, parent=self)
+        stored_data = self._get_stored_container_data()
+        if not stored_data:
+            return
 
-            # Load OPs into the container
-            ops_data = container_data.get('ops', {})
-            for op_name, op_info in ops_data.items():
-                if isinstance(op_info, str):
-                    # Legacy format support (simple path string)
-                    op_path = op_info
-                    stored_op = None
-                    op_extensions = {}
-                else:
-                    # New format (object with path, raw OP, and extensions)
-                    op_path = op_info.get('path', '')
-                    stored_op = op_info.get('op')  # Raw OP object for name change detection
-                    op_extensions = op_info.get('extensions', {})
+        ops_data = stored_data.get('ops', {})
 
-                utils.log(f"DEBUG _refresh: Loading OP '{op_name}' from '{op_path}'")
+        for stored_key, op_info in ops_data.items():
+            if isinstance(op_info, str):
+                # Legacy format support (simple path string)
+                op_path = op_info
+                stored_op = None
+                op_extensions = {}
+            else:
+                # New format (object with path, raw OP, and extensions)
+                op_path = op_info.get('path', '')
+                stored_op = op_info.get('op')  # Raw OP object for name change detection
+                op_extensions = op_info.get('extensions', {})
 
-                # Try to get OP by stored path first
-                op = td.op(op_path) if op_path else None
+            # Try to get OP by stored path first
+            op = td.op(op_path) if op_path else None
 
-                # If that fails but we have a stored OP object, use it (handles renames)
-                if not (op and op.valid) and stored_op and stored_op.valid:
-                    op = stored_op
-                    utils.log(f"DEBUG _refresh: Using stored OP object for '{op_name}' (original path may have changed)")
+            # If that fails but we have a stored OP object, use it (handles renames)
+            if not (op and op.valid) and stored_op and stored_op.valid:
+                op = stored_op
 
-                if op and op.valid:
-                    # Check for name changes
-                    current_name = op.name
-                    if op_name != current_name:
-                        utils.log(f"DEBUG _refresh: OP name changed from '{op_name}' to '{current_name}', updating mapping")
-                        # Use current name as key instead of stored name
-                        actual_key = current_name
-                    else:
-                        actual_key = op_name
+            if op and op.valid:
+                # Check for name changes
+                current_name = op.name
+                if stored_key != current_name:
+                    # Remove old mapping
+                    if stored_key in self._children:
+                        del self._children[stored_key]
 
-                    leaf_path = f"{container_path}.{actual_key}"
-                    leaf = OPLeaf(op, path=leaf_path, parent=container)
+                    # Add with new name
+                    leaf_path = f"{self.path}.{current_name}"
+                    leaf = OPLeaf(op, path=leaf_path, parent=self)
 
                     # Load extensions onto the leaf
                     if op_extensions:
                         leaf._extensions = op_extensions
-                        # Re-apply extensions (will be implemented in _extend)
-                        for ext_name, ext_data in op_extensions.items():
-                            # TODO: Apply extension logic here
-                            pass
 
-                    container._children[actual_key] = leaf
+                    self._children[current_name] = leaf
+            else:
+                # OP not found or invalid - remove from container
+                if stored_key in self._children:
+                    del self._children[stored_key]
+
+    def _refresh_extensions(self, target=None):
+        """Placeholder for extension refresh logic - will re-extract from DATs when _extend() is implemented"""
+        # TODO: Implement when _extend() is complete
+        pass
+
+    def _get_stored_container_data(self):
+        """Navigate storage hierarchy to find data for this container."""
+        root = self.__find_root()
+        if not hasattr(root, 'OProxies'):
+            return None
+
+        path_segments = self.path.split('.')
+        # Filter out empty segments (can happen with empty root path)
+        path_segments = [seg for seg in path_segments if seg]
+        current_data = root.OProxies.get('children', {})
+
+        # Navigate down the hierarchy following path segments
+        for i, segment in enumerate(path_segments):
+            if segment in current_data:
+                segment_data = current_data[segment]
+                # Check if it's dict-like (including TDStoreTools.DependDict)
+                if hasattr(segment_data, 'get') and hasattr(segment_data, 'keys'):
+                    # If this is the last segment, return the container data
+                    if i == len(path_segments) - 1:
+                        return segment_data
+                    # Otherwise continue to children
+                    current_data = segment_data.get('children', {})
                 else:
-                    utils.log(f"DEBUG _refresh: Warning - OP '{op_path}' not found or invalid, skipping")
+                    return None
+            else:
+                return None
 
-            # Recursively load nested children containers
-            nested_children = container_data.get('children', {})
-            if nested_children:
-                self._load_nested_containers(container, nested_children, container_path)
-
-            # Add container to root's children
-            self._children[container_name] = container
-
-        utils.log(f"DEBUG _refresh: Loaded {len(self._children)} containers from storage")
+        return None
 
     def _load_nested_containers(self, parent_container, children_data, parent_path):
         """Helper method to recursively load nested containers."""
