@@ -96,10 +96,15 @@ class root(OPContainer):
             else:
                 Log("Storage already in new format, no migration needed", status='debug', process='Migration')
 
-    def _clear(self):
-        """Clear all stored OProxy data and reload empty hierarchy."""
+    def _clear(self, flush_logger=True):
+        """Clear all stored OProxy data and reload empty hierarchy.
+
+        Args:
+            flush_logger (bool): Whether to flush the logger. Defaults to True.
+        """
         self.OProxies = {'children': {}, 'extensions': {}}
-        Log.flush()  # Clear logging state and log files for fresh start
+        if flush_logger:
+            Log.flush()  # Clear logging state and log files for fresh start
         self._refresh()  # Reload from the now-empty storage
 
 

@@ -531,7 +531,7 @@ class OPContainer(OPBaseWrapper):
         self.OProxies['children'].clear()
         self.OProxies['children'].update(children_data)
 
-        Log(f"Saved {len(children_data)} top-level containers to storage", status='info', process='_update_storage')
+        Log(f"Saved {len(children_data)} top-level containers to storage", status='debug', process='_update_storage')
 
     def _save_to_storage(self):
         """Public method to save the container hierarchy to storage."""
