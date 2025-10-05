@@ -23,6 +23,7 @@ class root(OPContainer):
         super().__init__(ownerComp=ownerComp, path="", parent=None, root=True)
 
         # Initialize TouchDesigner storage using StorageManager
+        # 
         storedItems = [
             {
                 'name': 'OProxies',
@@ -33,6 +34,7 @@ class root(OPContainer):
                 'dependable': True
             }
         ]
+        # 'OProxies' gets nested in'rootStorage' since 'root' is the name of the container extension and TD inits storage as '<extension_name>Storage'
         self.storage = StorageManager(self, ownerComp, storedItems)
 
         # Migrate old storage format to new format if needed
@@ -102,6 +104,9 @@ class root(OPContainer):
         Args:
             flush_logger (bool): Whether to flush the logger. Defaults to True.
         """
+        if flush_logger:
+            Log.flush()  # Clear logging state and log files for fresh start
+
         Log("Starting _clear operation", status='info', process='_clear')
 
         # Clear the existing storage dict instead of replacing it to maintain StorageManager reference
@@ -118,8 +123,5 @@ class root(OPContainer):
         self._refresh()  # Reload from the now-empty storage
 
         Log("_clear operation completed", status='info', process='_clear')
-
-        if flush_logger:
-            Log.flush()  # Clear logging state and log files for fresh start
 
 
