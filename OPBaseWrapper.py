@@ -4,6 +4,7 @@ import td
 import types
 import time
 import traceback
+import inspect
 from utils import td_isinstance
 
 ''' LLM Notes:
@@ -367,7 +368,20 @@ class OProxyExtension(OPBaseWrapper):
         """Allow calling if the actual object is callable."""
         try:
             if callable(self._actual):
-                return self._actual(*args, **kwargs)
+                # Check if this is a function that expects 'self' as first parameter
+                if inspect.isfunction(self._actual) or inspect.ismethod(self._actual):
+                    sig = inspect.signature(self._actual)
+                    params = list(sig.parameters.values())
+
+                    # If function has parameters and first param isn't 'self', warn developer
+                    if params and params[0].name != 'self':
+                        raise TypeError(f"Extension function '{self._actual.__name__}' must have 'self' as the first parameter "
+                                      f"to access the container instance. Current signature: {sig}. "
+                                      f"Change to: def {self._actual.__name__}(self, {', '.join(p.name for p in params)}):")
+
+                # Bind the function to the parent container as 'self'
+                bound_method = types.MethodType(self._actual, self._parent)
+                return bound_method(*args, **kwargs)
             else:
                 raise TypeError(f"'{self.__class__.__name__}' object is not callable")
         except Exception as e:
@@ -1151,4 +1165,4 @@ class OPContainer(OPBaseWrapper):
         except Exception as e:
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
-        return self
+        return extension if call else self

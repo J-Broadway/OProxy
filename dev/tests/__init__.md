@@ -1,4 +1,4 @@
-Please do not edit any tests unless explicitly asked.
+For all tests do not edit any tests unless explicitly asked.
 
 Here are the OP names currently available to use for testing.
 Not using one of these names will result in an error.
