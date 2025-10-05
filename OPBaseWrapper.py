@@ -821,7 +821,7 @@ class OPContainer(OPBaseWrapper):
                 container_data = {
                     'children': child.__build_storage_structure(),  # Recursively build nested children
                     'ops': {},  # OPs in this container
-                    'extensions': getattr(child, '_extensions', {})  # Container extensions
+                    'extensions': {name: ext.metadata for name, ext in child._extensions.items()}  # Container extensions metadata
                 }
 
                 # Add OPs from this container
@@ -831,7 +831,7 @@ class OPContainer(OPBaseWrapper):
                         op_data = {
                             'path': op_child._op.path,
                             'op': op_child._op,  # Store raw OP object for name change detection
-                            'extensions': getattr(op_child, '_extensions', {})  # Will be added by _extend()
+                            'extensions': {name: ext.metadata for name, ext in op_child._extensions.items()}  # Extensions metadata
                         }
                         container_data['ops'][op_name] = op_data
 

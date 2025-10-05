@@ -535,4 +535,3 @@ Clearing storage!
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:complete]> ==========TESTS COMPLETED==========
- Remind me to add more _remove() tests when extensions are implemented

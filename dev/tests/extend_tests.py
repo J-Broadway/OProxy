@@ -1,0 +1,19 @@
+opr = parent.src.OProxy
+import oproxy_tests
+
+current_storage = oproxy_tests.current_storage
+normalize_storage_for_comparison = oproxy_tests.normalize_storage_for_comparison
+passed = oproxy_tests.passed
+
+log = op('OProxy').Log
+
+# Clear Storage
+opr._clear()
+
+mvs = ['op1','op2','op3']
+opr._add('one', mvs)
+
+
+opr.one._extend('test', func='hello', dat='extensions_for_tests')
+
+opr.one.test() # should print 'hello world'
