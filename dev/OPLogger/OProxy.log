@@ -24,16 +24,60 @@
 <OProxy [DEBUG:_update_storage]> Saving container hierarchy to storage
  Saved 1 top-level containers to storage
 <OProxy [TEST:info]> 
-Begin testing _extend functionality 
-
+Begin testing _extend functionality
 
  
 Testing func extension
 
 <OProxy [INFO:_extend]> Extension 'test' added to container 'one'
 <OProxy [INFO]> hello world func extension is working
- Testing _remove() on extension
+ Testing _remove() on extension.
+<OProxy [TEST:storage]> 
+Current storage before _remove() --> {
+  "OProxies": {
+    "children": {
+      "one": {
+        "children": {},
+        "ops": {
+          "op1": {
+            "path": "/project1/myProject/op1",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          },
+          "op2": {
+            "path": "/project1/myProject/op2",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          },
+          "op3": {
+            "path": "/project1/myProject/op3",
+            "op": "<OP_OBJECT>",
+            "extensions": {}
+          }
+        },
+        "extensions": {
+          "test": {
+            "cls": null,
+            "func": "hello",
+            "dat_path": "/project1/myProject/extensions_for_tests",
+            "args": null,
+            "call": false,
+            "created_at": 1759639532.9074366
+          }
+        }
+      }
+    },
+    "extensions": {}
+  }
+}
+
+<OProxy [TEST:result]> 
+Checking if storage matches expected --> STORAGE TEST PASSED
+
 <OProxy [INFO:_remove]> Extension 'test' removed successfully
 <OProxy [INFO]> Testing args with call=True
 <OProxy [INFO:_extend]> Extension 'test' added to container 'one'
 <OProxy [INFO]> SUCCESFULLY SET ARG A SECOND TIME
+<OProxy [TEST:info]> 
+testing class extensions now
+

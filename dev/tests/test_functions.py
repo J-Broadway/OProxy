@@ -29,7 +29,15 @@ def normalize_storage_for_comparison(storage):
     elif isinstance(storage, list):
         return [normalize_storage_for_comparison(item) for item in storage]
     else:
-        return storage
+        # Convert JSON values to Python values for comparison
+        if storage is None or str(storage).lower() == 'null':
+            return None
+        elif str(storage).lower() == 'false':
+            return False
+        elif str(storage).lower() == 'true':
+            return True
+        else:
+            return storage
 
 def current_storage(msg=None):
 	current_storage = parent.src.fetch('rootStored').getRaw() # do not change this this works
