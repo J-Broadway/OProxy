@@ -57,4 +57,11 @@ log('Testing args with call=True')
 hey = opr.one._extend('test', func='callTrueTest', dat='extensions_for_tests', args=['I AM AN ARG THATS WORKING'], call=True)
 log(hey('SUCCESFULLY SET ARG A SECOND TIME'))
 
-tf.info('testing class extensions now')
+tf.info('Testing trying to overwrite extension class with monkey_patch=False')
+tf.info('First clear storage')
+opr._clear()
+
+tf.info('Creating extension class')
+test = opr._extend('test', cls='myClass', dat='extensions_for_tests')
+tf.info('Checkint to make sure we can access "testFunc()" from extension class')
+log(test.testFunc())
