@@ -18,3 +18,25 @@ checking call=True for class extension
 
 <OProxy [INFO:_extend]> Extension 'test' added to container 'root'
 <OProxy [INFO]> testFunc called I AM WORKING YAY
+<OProxy [TEST:info]> 
+Checking Storage For Root Level Extensions
+
+<OProxy [TEST:storage]> 
+Should see extensions stored in storage --> {
+  "OProxies": {
+    "children": {},
+    "extensions": {
+      "test": {
+        "cls": "myClass",
+        "func": null,
+        "dat_path": "/project1/myProject/extensions_for_tests",
+        "args": [
+          "arg"
+        ],
+        "call": true,
+        "created_at": 1759649378.5194604
+      }
+    }
+  }
+}
+

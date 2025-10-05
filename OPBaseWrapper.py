@@ -833,6 +833,9 @@ class OPContainer(OPBaseWrapper):
             # For root container, replace entire children structure
             self.OProxies['children'] = container_data
 
+            # Update root extensions
+            self.OProxies['extensions'] = {name: ext._metadata for name, ext in self._extensions.items()}
+
             self._updating_storage = False
 
         except Exception as e:
@@ -900,6 +903,24 @@ class OPContainer(OPBaseWrapper):
                 children_data = self.OProxies.get('children', {})
                 if children_data:
                     self._load_nested_containers(self, children_data, "")
+
+                # Load root extensions from storage
+                extensions_data = self.OProxies.get('extensions', {})
+                for ext_name, ext_metadata in extensions_data.items():
+                    try:
+                        # Recreate extension from stored metadata
+                        cls = ext_metadata.get('cls')
+                        func = ext_metadata.get('func')
+                        dat_path = ext_metadata.get('dat_path')
+                        args = ext_metadata.get('args')
+                        call = ext_metadata.get('call', False)
+
+                        if dat_path:
+                            # Recreate the extension
+                            extension = self._extend(ext_name, cls=cls, func=func, dat=dat_path, args=args, call=call)
+                            Log(f"Loaded root extension '{ext_name}' from storage", status='debug', process='_refresh')
+                    except Exception as e:
+                        Log(f"Failed to load root extension '{ext_name}' from storage: {e}", status='warning', process='_refresh')
 
             # Recursive refresh of children
             for child in self._children.values():
