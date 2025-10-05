@@ -1,11 +1,6 @@
 opr = parent.src.OProxy
-import oproxy_tests
 
-current_storage = oproxy_tests.current_storage
-normalize_storage_for_comparison = oproxy_tests.normalize_storage_for_comparison
-passed = oproxy_tests.passed
-
-log = op('OProxy').Log
+# log = op('OProxy').Log
 
 # Clear Storage
 opr._clear()
