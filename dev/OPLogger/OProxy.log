@@ -12,3 +12,8 @@ Creating extension class
 <OProxy [TEST:info]> 
 Checkint to make sure we can access "testFunc()" from extension class
 
+<OProxy [INFO]> testFunc called I AM WORKING YAY
+<OProxy [TEST:info]> 
+checking call=True for class extension
+
+<OProxy [INFO:_extend]> Extension 'test' added to container 'root'

@@ -56,7 +56,7 @@ class OPBaseWrapper(ABC):
         - monkey_patch (bool): Allow overwriting existing attributes
 
         Returns:
-        - self: For method chaining
+        - Extension object: The created extension for direct use
 
         Raises:
         - ValueError: Invalid parameters, naming conflicts, extraction failures
@@ -1183,4 +1183,4 @@ class OPContainer(OPBaseWrapper):
         except Exception as e:
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
-        return extension if call else self
+        return extension

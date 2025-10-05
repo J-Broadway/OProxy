@@ -12,6 +12,10 @@ container._extend('my_function', func='myFunctionName', dat='my_dat')
 
 # Call the extended function
 container.my_function(arg1, arg2)
+
+# Or use the returned extension directly
+func = container._extend('my_func', func='myFunctionName', dat='my_dat')
+result = func(arg1, arg2)
 ```
 
 ## Parameters
@@ -101,6 +105,11 @@ class DataProcessor:
 # Usage:
 processor = container._extend('processor', cls='DataProcessor', dat='extensions_dat', args=[{'multiplier': 2}], call=True)
 result = processor.process(5)  # Returns 10
+
+# Or for manual instantiation:
+my_class = container._extend('my_class', cls='MyClass', dat='extensions_dat')
+instance = my_class()  # Instantiate when ready
+result = instance.some_method()
 ```
 
 ### Utility Function (no self)

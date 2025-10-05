@@ -63,5 +63,9 @@ opr._clear()
 
 tf.info('Creating extension class')
 test = opr._extend('test', cls='myClass', dat='extensions_for_tests')
+initiate = test()
 tf.info('Checkint to make sure we can access "testFunc()" from extension class')
 log(test.testFunc())
+tf.info('checking call=True for class extension')
+test = opr._extend('test', cls='myClass', dat='extensions_for_tests', args=['arg'], call=True)
+
