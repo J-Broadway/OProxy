@@ -242,79 +242,83 @@ class OPLeaf(OPBaseWrapper):
 
         Leaf extensions are bound to the leaf instance (self refers to the OPLeaf).
         """
-        # Parameter validation
-        if not (cls or func) and dat is not None:
-            raise ValueError("Must specify either 'cls' or 'func' when 'dat' is provided")
-        if (cls and func) or (not cls and not func):
-            raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
-        if not dat:
-            raise ValueError("'dat' parameter is required for extensions")
-
-        # Import AST extraction module
-        mod_ast = mod('mod_AST')
-
-        # Validate DAT
         try:
-            dat = td_isinstance(dat, 'textdat', allow_string=True)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid DAT: {e}")
+            # Parameter validation
+            if not (cls or func) and dat is not None:
+                raise ValueError("Must specify either 'cls' or 'func' when 'dat' is provided")
+            if (cls and func) or (not cls and not func):
+                raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
+            if not dat:
+                raise ValueError("'dat' parameter is required for extensions")
 
-        # Check for naming conflicts
-        if hasattr(self, attr_name) and not monkey_patch:
-            existing_attr = getattr(self, attr_name)
-            if not isinstance(existing_attr, OProxyExtension):
-                raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
-                               f"To overwrite, use monkey_patch=True.")
+            # Import AST extraction module
+            mod_ast = mod('mod_AST')
 
-        # Extract the actual object
-        try:
-            actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
-        except Exception as e:
-            raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+            # Validate DAT
+            try:
+                dat = td_isinstance(dat, 'textdat', allow_string=True)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid DAT: {e}")
 
-        # Prepare metadata
-        metadata = {
-            'cls': cls, 'func': func, 'dat_path': dat.path,
-            'args': args, 'call': call, 'created_at': time.time()
-        }
+            # Check for naming conflicts
+            if hasattr(self, attr_name) and not monkey_patch:
+                existing_attr = getattr(self, attr_name)
+                if not isinstance(existing_attr, OProxyExtension):
+                    raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
+                                   f"To overwrite, use monkey_patch=True.")
 
-        # Create extension wrapper
-        extension = OProxyExtension(actual_obj, self, dat, metadata)
+            # Extract the actual object
+            try:
+                actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+            except Exception as e:
+                raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
 
-        # Store extension name for removal purposes
-        extension._extension_name = attr_name
+            # Prepare metadata
+            metadata = {
+                'cls': cls, 'func': func, 'dat_path': dat.path,
+                'args': args, 'call': call, 'created_at': time.time()
+            }
 
-        # Handle call parameter
-        if call:
-            if args is not None and not isinstance(args, (tuple, list)):
-                raise TypeError("args must be a tuple or list of positional arguments when call=True")
+            # Create extension wrapper
+            extension = OProxyExtension(actual_obj, self, dat, metadata)
 
+            # Store extension name for removal purposes
+            extension._extension_name = attr_name
+
+            # Handle call parameter
             if call:
-                if isinstance(actual_obj, type):  # Class instantiation
-                    result = actual_obj(*args) if args else actual_obj()
-                    extension = OProxyExtension(result, self, dat, metadata)
-                    extension._extension_name = attr_name
-                else:  # Function call
-                    bound_method = types.MethodType(actual_obj, self)
-                    result = bound_method(*args) if args else bound_method()
-                    extension = OProxyExtension(bound_method, self, dat, metadata)
-                    extension._extension_name = attr_name
+                if args is not None and not isinstance(args, (tuple, list)):
+                    raise TypeError("args must be a tuple or list of positional arguments when call=True")
 
-        # Apply extension to parent object (make it accessible)
-        setattr(self, attr_name, extension)
+                if call:
+                    if isinstance(actual_obj, type):  # Class instantiation
+                        result = actual_obj(*args) if args else actual_obj()
+                        extension = OProxyExtension(result, self, dat, metadata)
+                        extension._extension_name = attr_name
+                    else:  # Function call
+                        bound_method = types.MethodType(actual_obj, self)
+                        result = bound_method(*args) if args else bound_method()
+                        extension = OProxyExtension(bound_method, self, dat, metadata)
+                        extension._extension_name = attr_name
 
-        # Store in internal registry for management
-        self._extensions[attr_name] = extension
+            # Apply extension to parent object (make it accessible)
+            setattr(self, attr_name, extension)
 
-        # Update storage by finding root and updating
-        root = self
-        while root._parent is not None:
-            root = root._parent
-        if hasattr(root, 'OProxies'):
-            root._update_storage()
+            # Store in internal registry for management
+            self._extensions[attr_name] = extension
 
-        Log(f"Extension '{attr_name}' added to leaf '{self.path}'", status='info', process='_extend')
-        return self
+            # Update storage by finding root and updating
+            root = self
+            while root._parent is not None:
+                root = root._parent
+            if hasattr(root, 'OProxies'):
+                root._update_storage()
+
+            Log(f"Extension '{attr_name}' added to leaf '{self.path}'", status='info', process='_extend')
+            return self
+        except Exception as e:
+            Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
+            raise
 
 
 class OProxyExtension(OPBaseWrapper):
@@ -420,9 +424,15 @@ class OProxyExtension(OPBaseWrapper):
             if hasattr(self._parent, self._extension_name):
                 delattr(self._parent, self._extension_name)
 
-            # Clean up storage (will call parent's storage update)
-            if hasattr(self._parent, '_update_storage'):
-                self._parent._update_storage()
+            # Clean up storage (find root and update storage)
+            try:
+                root = self._parent
+                while root and root._parent is not None:
+                    root = root._parent
+                if hasattr(root, 'OProxies'):
+                    root._update_storage()
+            except Exception as e:
+                Log(f"Failed to update storage during extension removal: {e}", status='error', process='_remove')
 
         Log(f"Extension '{getattr(self, '_extension_name', 'unknown')}' removed successfully", status='info', process='_remove')
         return self

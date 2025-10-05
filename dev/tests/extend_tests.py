@@ -1,5 +1,6 @@
+import test_functions as tf
 opr = parent.src.OProxy
-log = op('OProxy').Log
+log = tf.log
 
 # Clear Storage
 opr._clear()
@@ -7,8 +8,8 @@ opr._clear()
 mvs = ['op1','op2','op3']
 opr._add('one', mvs)
 
-log('Begin testing _extend functionality \n')
-log('Testing func extension')
+tf.info('Begin testing _extend functionality')
+tf.info('Testing func extension')
 opr.one._extend('test', func='hello', dat='extensions_for_tests')
 log(opr.one.test())
 log('Testing _remove() on extension')
