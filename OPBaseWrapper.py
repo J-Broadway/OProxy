@@ -591,7 +591,7 @@ class OPContainer(OPBaseWrapper):
 
         return added_count
 
-    def _add(self, name, op):
+    def _add(self, name, op=None):
         '''
         Add OPs to a container. Creates new container if it doesn't exist, or adds to existing container.
 
@@ -622,19 +622,27 @@ class OPContainer(OPBaseWrapper):
 
         Future: Use _extend() for monkey patching magic methods
         '''
-        Log(f"Processing '{name}' in container '{self.path or 'root'}'", status='debug', process='_add')
+        try:
+            # Validate arguments - op is required
+            if op is None:
+                raise TypeError("_add() missing 1 required positional argument: 'op'")
 
-        # Check if container already exists
-        if name in self._children:
-            existing = self._children[name]
-            if isinstance(existing, OPContainer):
-                Log(f"'{name}' OPContainer already exists - adding to existing container", status='info', process='_add')
-                self._add_insert(existing, op)
+            Log(f"Processing '{name}' in container '{self.path or 'root'}'", status='debug', process='_add')
+
+            # Check if container already exists
+            if name in self._children:
+                existing = self._children[name]
+                if isinstance(existing, OPContainer):
+                    Log(f"'{name}' OPContainer already exists - adding to existing container", status='info', process='_add')
+                    self._add_insert(existing, op)
+                else:
+                    raise ValueError(f"Cannot add container '{name}' - already exists as OP in '{self.path or 'root'}'")
             else:
-                raise ValueError(f"Cannot add container '{name}' - already exists as OP in '{self.path or 'root'}'")
-        else:
-            # Create new container
-            self._add_init(name, op)
+                # Create new container
+                self._add_init(name, op)
+        except Exception as e:
+            Log(f"_add operation failed: {e}", status='error', process='_add')
+            raise
 
     def _remove(self, name=None):
         """
@@ -646,56 +654,60 @@ class OPContainer(OPBaseWrapper):
         - container._remove(['child1', 'child2'])  # Remove multiple children
         - extension._remove()           # Remove this extension
         """
-        # Case 0: _remove() on extension - delegate to extension's remove method
-        if isinstance(self, OProxyExtension):
-            return self._remove()
+        try:
+            # Case 0: _remove() on extension - delegate to extension's remove method
+            if isinstance(self, OProxyExtension):
+                return self._remove()
 
-        # Case 1: _remove() - remove self from parent
-        if name is None:
-            if self._parent is not None:
-                # Remove self from parent
-                parent_container = self._parent
-                my_name = None
-                # Find my name in parent's children
-                for child_name, child in parent_container._children.items():
-                    if child is self:
-                        my_name = child_name
-                        break
+            # Case 1: _remove() - remove self from parent
+            if name is None:
+                if self._parent is not None:
+                    # Remove self from parent
+                    parent_container = self._parent
+                    my_name = None
+                    # Find my name in parent's children
+                    for child_name, child in parent_container._children.items():
+                        if child is self:
+                            my_name = child_name
+                            break
 
-                if my_name is not None:
-                    Log(f"Removing self ('{my_name}') from parent", status='debug', process='_remove')
-                    del parent_container._children[my_name]
+                    if my_name is not None:
+                        Log(f"Removing self ('{my_name}') from parent", status='debug', process='_remove')
+                        del parent_container._children[my_name]
+                        # Find root and save entire updated hierarchy
+                        root = parent_container.__find_root()
+                        if hasattr(root, 'OProxies'):
+                            utils.remove(self, root.OProxies, parent_container.path)
+                            root.__save_to_storage()
+                    else:
+                        Log("Could not find self in parent children", status='warning', process='_remove')
+                else:
+                    Log("Cannot remove root container", status='warning', process='_remove')
+                return self
+
+            # Case 2: _remove([names]) - remove multiple children
+            elif isinstance(name, (list, tuple)):
+                for item_name in name:
+                    self._remove(item_name)  # Recursive call for single item removal
+                return self
+
+            # Case 3: _remove('name') - remove single child
+            else:
+                if name in self._children:
+                    container_to_remove = self._children[name]
+                    Log(f"Removing child '{name}' from container '{self.path or 'root'}'", status='info', process='_remove')
+                    del self._children[name]
                     # Find root and save entire updated hierarchy
-                    root = parent_container.__find_root()
+                    root = self.__find_root()
                     if hasattr(root, 'OProxies'):
-                        utils.remove(self, root.OProxies, parent_container.path)
+                        utils.remove(container_to_remove, root.OProxies, self.path)
                         root.__save_to_storage()
                 else:
-                    Log("Could not find self in parent children", status='warning', process='_remove')
-            else:
-                Log("Cannot remove root container", status='warning', process='_remove')
-            return self
-
-        # Case 2: _remove([names]) - remove multiple children
-        elif isinstance(name, (list, tuple)):
-            for item_name in name:
-                self._remove(item_name)  # Recursive call for single item removal
-            return self
-
-        # Case 3: _remove('name') - remove single child
-        else:
-            if name in self._children:
-                container_to_remove = self._children[name]
-                Log(f"Removing child '{name}' from container '{self.path or 'root'}'", status='info', process='_remove')
-                del self._children[name]
-                # Find root and save entire updated hierarchy
-                root = self.__find_root()
-                if hasattr(root, 'OProxies'):
-                    utils.remove(container_to_remove, root.OProxies, self.path)
-                    root.__save_to_storage()
-            else:
-                Log(f"Child '{name}' not found in container '{self.path or 'root'}'", status='warning', process='_remove')
-            return self
+                    Log(f"Child '{name}' not found in container '{self.path or 'root'}'", status='warning', process='_remove')
+                return self
+        except Exception as e:
+            Log(f"_remove operation failed: {e}", status='error', process='_remove')
+            raise
 
     def __find_root(self):
         """Internal method: Traverse up parent chain to find root container."""

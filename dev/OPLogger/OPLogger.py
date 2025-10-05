@@ -7,7 +7,8 @@ status = [
 	"INFO", # Default status
 	"WARNING",
 	"ERROR",
-	"DEBUG", # Meant for internal use.
+	"DEBUG", # Meant for internal use.;
+	"TEST",
 ]
 
 class Logger:
