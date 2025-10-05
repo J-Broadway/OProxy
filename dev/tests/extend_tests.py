@@ -11,6 +11,10 @@ log('Begin testing _extend functionality \n')
 log('Testing func extension')
 opr.one._extend('test', func='hello', dat='extensions_for_tests')
 log(opr.one.test())
+log('Testing _remove() on extension')
+opr.one.test._remove()
 log('Testing args with call=True')
-test = opr.one._extend('test', func='callTrueTest', dat='extensions_for_tests', args=['I AM AN ARG THATTS WORKIN'], call=True)
-test('SUCCESFULLY SET ARG A SECOND TIME')
+hey = opr.one._extend('test', func='callTrueTest', dat='extensions_for_tests', args=['I AM AN ARG THATS WORKING'], call=True)
+log(hey('SUCCESFULLY SET ARG A SECOND TIME'))
+
+

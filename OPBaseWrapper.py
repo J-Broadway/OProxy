@@ -368,24 +368,25 @@ class OProxyExtension(OPBaseWrapper):
         """Allow calling if the actual object is callable."""
         try:
             if callable(self._actual):
-                # Check if this is a function that expects 'self' as first parameter
-                if inspect.isfunction(self._actual) or inspect.ismethod(self._actual):
+                if isinstance(self._actual, type):  # Class instantiation
+                    return self._actual(*args, **kwargs)
+                elif inspect.isfunction(self._actual) or inspect.ismethod(self._actual):
                     sig = inspect.signature(self._actual)
                     params = list(sig.parameters.values())
-
-                    # If function has parameters and first param isn't 'self', warn developer
-                    if params and params[0].name != 'self':
-                        raise TypeError(f"Extension function '{self._actual.__name__}' must have 'self' as the first parameter "
-                                      f"to access the container instance. Current signature: {sig}. "
-                                      f"Change to: def {self._actual.__name__}(self, {', '.join(p.name for p in params)}):")
-
-                # Bind the function to the parent container as 'self'
-                bound_method = types.MethodType(self._actual, self._parent)
-                return bound_method(*args, **kwargs)
+                    if params and params[0].name == 'self':
+                        # Bind the function to the parent container as 'self'
+                        bound_method = types.MethodType(self._actual, self._parent)
+                        return bound_method(*args, **kwargs)
+                    else:
+                        # Call without binding (static function)
+                        return self._actual(*args, **kwargs)
+                else:
+                    # Other callables (e.g., instances with __call__)
+                    return self._actual(*args, **kwargs)
             else:
                 raise TypeError(f"'{self.__class__.__name__}' object is not callable")
         except Exception as e:
-            Log(f"Extension call failed: {e}\n{traceback.format_exc()}", status='error', process='__call__')
+            Log(f"Error calling extension: {e}\n{traceback.format_exc()}", status='error', process='__call__')
             raise
 
     @property
@@ -1123,11 +1124,7 @@ class OPContainer(OPBaseWrapper):
                 'args': args, 'call': call, 'created_at': time.time()
             }
 
-            # Create extension wrapper
-            extension = OProxyExtension(actual_obj, self, dat, metadata)
-
-            # Store extension name for removal purposes
-            extension._extension_name = attr_name
+            extension = None
 
             # Handle call parameter
             if call:
@@ -1136,17 +1133,28 @@ class OPContainer(OPBaseWrapper):
 
                 try:
                     if isinstance(actual_obj, type):  # Class instantiation
-                        result = actual_obj(*args) if args else actual_obj()
-                        extension = OProxyExtension(result, self, dat, metadata)
+                        instance = actual_obj(*args) if args else actual_obj()
+                        extension = OProxyExtension(instance, self, dat, metadata)
                         extension._extension_name = attr_name
                     else:  # Function call
-                        bound_method = types.MethodType(actual_obj, self)
-                        result = bound_method(*args) if args else bound_method()
-                        extension = OProxyExtension(bound_method, self, dat, metadata)
+                        sig = inspect.signature(actual_obj)
+                        params = list(sig.parameters.values())
+                        has_self = params and params[0].name == 'self'
+
+                        if has_self:
+                            bound_method = types.MethodType(actual_obj, self)
+                            bound_method(*args) if args else bound_method()
+                        else:
+                            actual_obj(*args) if args else actual_obj()
+
+                        extension = OProxyExtension(actual_obj, self, dat, metadata)
                         extension._extension_name = attr_name
                 except Exception as e:
                     Log(f"Extension call execution failed during _extend: {e}\n{traceback.format_exc()}", status='error', process='_extend')
                     raise
+            else:
+                extension = OProxyExtension(actual_obj, self, dat, metadata)
+                extension._extension_name = attr_name
 
             # Apply extension to parent object (make it accessible)
             setattr(self, attr_name, extension)
