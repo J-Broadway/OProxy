@@ -1,6 +1,6 @@
 opr = parent.src.OProxy
 
-# log = op('OProxy').Log
+log = op('OProxy').Log
 
 # Clear Storage
 opr._clear()
@@ -11,4 +11,4 @@ opr._add('one', mvs)
 
 opr.one._extend('test', func='hello', dat='extensions_for_tests')
 
-opr.one.test() # should print 'hello world'
+log(opr.one.test())

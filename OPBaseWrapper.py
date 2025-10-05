@@ -842,7 +842,7 @@ class OPContainer(OPBaseWrapper):
                 container_data = {
                     'children': child.__build_storage_structure(),  # Recursively build nested children
                     'ops': {},  # OPs in this container
-                    'extensions': {name: ext.metadata for name, ext in child._extensions.items()}  # Container extensions metadata
+                    'extensions': {name: ext._metadata for name, ext in child._extensions.items()}  # Container extensions metadata
                 }
 
                 # Add OPs from this container
