@@ -327,7 +327,7 @@ expected = {
 tf.passed(expected, 'storage', 'Checking above test')
 
 tf.info('Clearing storage!')
-opr._clear(flush_logger=False)
+#opr._clear(flush_logger=False)
 tf.log('==========TESTS COMPLETED==========', status='test', process='complete')
 print('Remind me to add more _remove() tests when extensions are implemented')
 

@@ -13,6 +13,6 @@ class myClass:
 		print("myClass called from extensions_for_tests")
 		if args is not None:
 			print('ARGS PASSED THRU WORKING')
-	def testFunc():
+	def testFunc(self):
 		return 'testFunc called I AM WORKING YAY'
 

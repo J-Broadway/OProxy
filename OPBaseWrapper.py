@@ -373,7 +373,11 @@ class OProxyExtension(OPBaseWrapper):
         try:
             if callable(self._actual):
                 if isinstance(self._actual, type):  # Class instantiation
-                    return self._actual(*args, **kwargs)
+                    instance = self._actual(*args, **kwargs)
+                    # For extensions wrapping classes, replace with the instance
+                    # so subsequent attribute access works on the instance
+                    self._actual = instance
+                    return instance
                 elif inspect.isfunction(self._actual) or inspect.ismethod(self._actual):
                     sig = inspect.signature(self._actual)
                     params = list(sig.parameters.values())
