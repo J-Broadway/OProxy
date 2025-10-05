@@ -1,8 +1,8 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing OProxies storage with 1 containers
+<OProxy [DEBUG:_clear]> Clearing OProxies storage with 0 containers
  Reset OProxies to empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [DEBUG:_add]> Processing 'one' in container 'root'
@@ -62,7 +62,7 @@ Current storage before _remove() --> {
             "dat_path": "/project1/myProject/extensions_for_tests",
             "args": null,
             "call": false,
-            "created_at": 1759639532.9074366
+            "created_at": 1759639753.7136154
           }
         }
       }

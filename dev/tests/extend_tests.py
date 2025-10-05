@@ -51,21 +51,7 @@ expected = {
     "extensions": {}
   }
 }
-# Get actual storage and compare without timestamps
-import copy
-actual_storage = tf.current_storage()
-expected_copy = copy.deepcopy(expected)
-
-# Remove timestamp from comparison since it changes each run
-if 'OProxies' in actual_storage and 'children' in actual_storage['OProxies'] and 'one' in actual_storage['OProxies']['children']:
-    if 'extensions' in actual_storage['OProxies']['children']['one'] and 'test' in actual_storage['OProxies']['children']['one']['extensions']:
-        actual_ext = actual_storage['OProxies']['children']['one']['extensions']['test']
-        expected_ext = expected_copy['OProxies']['children']['one']['extensions']['test']
-        # Check that timestamp exists and is a number
-        if 'created_at' in actual_ext and isinstance(actual_ext['created_at'], (int, float)):
-            expected_ext['created_at'] = actual_ext['created_at']
-
-tf.passed(actual_storage == expected_copy, 'storage', 'Checking if storage matches expected')
+tf.passed(expected, 'storage', 'Checking if storage matches expected')
 opr.one.test._remove()
 log('Testing args with call=True')
 hey = opr.one._extend('test', func='callTrueTest', dat='extensions_for_tests', args=['I AM AN ARG THATS WORKING'], call=True)

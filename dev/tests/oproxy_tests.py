@@ -42,7 +42,7 @@ expected = {
     "extensions": {}
   }
 }
-tf.passed(tf.current_storage() == expected, 'storage', 'Checking if storage matches expected')
+tf.passed(expected, 'storage', 'Checking if storage matches expected')
 
 # test accessibility
 for i in opr.items:
@@ -132,7 +132,7 @@ expected = {
   }
 }
 
-tf.passed(tf.current_storage() == expected, 'storage', 'Checking if nested storage matches expected')
+tf.passed(expected, 'storage', 'Checking if nested storage matches expected')
 
 tf.info('Begin testing _remove() functionality')
 
@@ -204,7 +204,7 @@ expected = {
   }
 }
 
-tf.passed(tf.current_storage() == expected, 'storage', 'Checking if _remove() functionality works as expected')
+tf.passed(expected, 'storage', 'Checking if _remove() functionality works as expected')
 
 tf.info('Going to add another container and test _remove() functionality')
 opr.items.nest._add('ANOTHER_NEST', mvs)
@@ -293,7 +293,7 @@ expected = {
   }
 }
 
-tf.passed(tf.current_storage() == expected, 'storage', 'Checking above test')
+tf.passed(expected, 'storage', 'Checking above test')
 tf.info('Gonna remove an entire branch')
 opr.items._remove()
 tf.current_storage('Current storage after removing entire branch')
@@ -303,7 +303,7 @@ expected = {
     "extensions": {}
   }
 }
-tf.passed(tf.current_storage() == expected, 'storage', 'Checking above test')
+tf.passed(expected, 'storage', 'Checking above test')
 tf.info('Add container and try to remove individual leaves like this opr.items("op1")._remove()')
 opr._add('items', mvs)
 tf.current_storage('Current storage after adding "items" container for OPLeaf testing')
@@ -324,7 +324,7 @@ expected = {
     "extensions": {}
   }
 }
-tf.passed(tf.current_storage() == expected, 'storage', 'Checking above test')
+tf.passed(expected, 'storage', 'Checking above test')
 
 tf.info('Clearing storage!')
 opr._clear(flush_logger=False)

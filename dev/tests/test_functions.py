@@ -1,18 +1,38 @@
 import json
+import copy
 log = op('OProxy').Log
 
 def info(msg):
 	log(f'\n{msg}\n', status='test', process='info')
 
-def passed(test, test_name, msg):
-	if test:
-		log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
-	else:
-		if test_name == 'storage':
+def passed(test_or_expected, test_name, msg):
+	# Handle storage tests specially
+	if test_name == 'storage':
+		import copy
+		actual_storage = current_storage()
+		expected_copy = copy.deepcopy(test_or_expected)
+
+		# Handle dynamic timestamps in extensions
+		_normalize_timestamps_for_comparison(actual_storage, expected_copy)
+
+		test_result = actual_storage == expected_copy
+		if test_result:
+			log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
+			return True
+		else:
 			log('\n STORAGE INCONGRUENCY \n', status='test', process='result')
+			# Log the actual vs expected for debugging
+			log(f'Expected: {json.dumps(expected_copy, indent=2)}', status='test', process='debug')
+			log(f'Actual: {json.dumps(actual_storage, indent=2)}', status='test', process='debug')
 			raise ValueError('\n STORAGE INCONGRUENCY \n')
-		log(f'\n{msg} --> {test_name.upper()} TEST FAILED\n', status='test', process='result')
-		raise Exception(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
+	else:
+		# Handle regular boolean tests
+		if test_or_expected:
+			log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
+			return True
+		else:
+			log(f'\n{msg} --> {test_name.upper()} TEST FAILED\n', status='test', process='result')
+			raise Exception(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
 
 def normalize_storage_for_comparison(storage):
     """Normalize storage by replacing OP objects and extensions with placeholders for comparison."""
@@ -38,6 +58,24 @@ def normalize_storage_for_comparison(storage):
             return True
         else:
             return storage
+
+def _normalize_timestamps_for_comparison(actual_storage, expected_storage):
+    """Normalize timestamps in expected storage to match actual storage for comparison."""
+    def _normalize_recursive(actual, expected, path=""):
+        if isinstance(actual, dict) and isinstance(expected, dict):
+            for key in actual:
+                if key in expected:
+                    if key == 'created_at' and isinstance(actual[key], (int, float)):
+                        # Copy timestamp from actual to expected
+                        expected[key] = actual[key]
+                    elif isinstance(actual[key], dict) and isinstance(expected[key], dict):
+                        _normalize_recursive(actual[key], expected[key], f"{path}.{key}")
+                    elif isinstance(actual[key], list) and isinstance(expected[key], list):
+                        for i, (a_item, e_item) in enumerate(zip(actual[key], expected[key])):
+                            if isinstance(a_item, dict) and isinstance(e_item, dict):
+                                _normalize_recursive(a_item, e_item, f"{path}.{key}[{i}]")
+
+    _normalize_recursive(actual_storage, expected_storage)
 
 def current_storage(msg=None):
 	current_storage = parent.src.fetch('rootStored').getRaw() # do not change this this works
