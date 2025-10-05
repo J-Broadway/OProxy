@@ -781,13 +781,22 @@ class OPContainer(OPBaseWrapper):
             raise RuntimeError("_update_storage() can only be called on root containers")
 
         try:
+            # Prevent recursive updates from storage dependencies
+            if hasattr(self, '_updating_storage') and self._updating_storage:
+                return
+            self._updating_storage = True
+
             # Rebuild this container's complete storage structure
             container_data = self.__build_storage_structure()
 
             # For root container, replace entire children structure
             self.OProxies['children'] = container_data
 
+            self._updating_storage = False
+
         except Exception as e:
+            if hasattr(self, '_updating_storage'):
+                self._updating_storage = False
             Log(f"Failed to update storage: {e}\n{traceback.format_exc()}", status='error', process='_update_storage')
             raise
 
