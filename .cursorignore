@@ -1,5 +1,5 @@
 # Ignore files matching oproxy.<number>.toe
-oproxy.*.toe
+OProxy.*.toe
 utils_old.py
 
 # Ignore files containing CrashAutoSave or TouchDesignerCrash

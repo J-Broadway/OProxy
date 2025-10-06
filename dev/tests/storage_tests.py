@@ -60,3 +60,6 @@ tf.info('now showing storage for "item2" extension')
 opr.items.item2.test._storage()
 tf.info('now gonna try on an OPLeaf')
 opr.items('op1')._storage()
+
+opr._clear()
+tf.info('++++++++++++++++++++++_Store() TESTS PASSED++++++++++++++++++++++')
