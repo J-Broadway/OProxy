@@ -34,9 +34,24 @@ Should see extensions stored in storage --> {
           "arg"
         ],
         "call": true,
-        "created_at": 1759721255.198274
+        "created_at": 1759721792.5264
       }
     }
   }
 }
 
+<OProxy [TEST:result]> 
+Checking if root extensions storage matches expected --> STORAGE TEST PASSED
+
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [ERROR:_extend]> Extension creation failed for 'test': args must be a tuple or list of positional arguments when call=True
+Traceback (most recent call last):
+  File "/project1/myProject/OProxy/OPBaseWrapper", line 1247, in _extend
+TypeError: args must be a tuple or list of positional arguments when call=True
+
+Traceback (most recent call last):
+  File "/project1/myProject/OProxy/OPBaseWrapper", line 1247, in _extend
+TypeError: args must be a tuple or list of positional arguments when call=True
+<OProxy [WARNING:_refresh]> Failed to load root extension 'test' from storage: args must be a tuple or list of positional arguments when call=True
+<OProxy [INFO:Init]> OProxy root initialized

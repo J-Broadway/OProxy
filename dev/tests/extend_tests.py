@@ -1,6 +1,6 @@
 import test_functions as tf
 opr = parent.src.OProxy
-log = tf.log
+log = tf.log 
 
 # Clear Storage
 opr._clear()
@@ -89,4 +89,3 @@ expected ={
   }
 }
 tf.passed(expected, 'storage', 'Checking if root extensions storage matches expected')
-print('yo')
