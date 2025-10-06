@@ -40,7 +40,7 @@ class root(OPContainer):
             }
         ]
         # 'OProxies' gets nested in'rootStorage' since 'root' is the name of the container extension and TD inits storage as '<extension_name>Storage'
-        self._storage = StorageManager(self, ownerComp, storedItems)
+        self._storage_manager = StorageManager(self, ownerComp, storedItems)
 
         # Migrate old storage format to new format if needed
         self._migrate_storage_format()
@@ -126,7 +126,7 @@ class root(OPContainer):
 
         # Restore storage to default
         Log("Restoring OProxies to default empty state", status='debug', process='_clear')
-        self._storage.restoreDefault('OProxies')
+        self._storage_manager.restoreDefault('OProxies')
 
         # Clear in-memory hierarchy
         Log(f"Clearing in-memory hierarchy with {len(self._children)} containers", status='debug', process='_clear')

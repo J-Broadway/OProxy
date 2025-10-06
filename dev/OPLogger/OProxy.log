@@ -5,22 +5,3 @@
  Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
-<OProxy [ERROR:_add]> _add operation failed: _add() missing 1 required positional argument: 'op'
-Traceback (most recent call last):
-  File "/project1/myProject/OProxy/OPBaseWrapper", line 657, in _add
-TypeError: _add() missing 1 required positional argument: 'op'
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [INFO:Init]> OProxy root initialized
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [INFO:Init]> OProxy root initialized
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [INFO:Init]> OProxy root initialized
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [INFO:Init]> OProxy root initialized
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [INFO:Init]> OProxy root initialized
