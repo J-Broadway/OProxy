@@ -1,38 +1,85 @@
 import json
 import copy
 log = op('OProxy').Log
+utils = mod('OProxy/utils')
 
 def info(msg):
 	log(f'\n{msg}\n', status='test', process='info')
 
 def passed(test_or_expected, test_name, msg):
-	# Handle storage tests specially
-	if test_name == 'storage':
-		import copy
-		actual_storage = current_storage()
-		expected_copy = copy.deepcopy(test_or_expected)
+    if test_name == '_storage() test 1':
+        match = {
+                "children": {
+                    "items": {
+                        "children": {},
+                        "ops": {
+                            "op1": {
+                                "op": {
+                                    "name": "op1",
+                                    "type": "moviefileinTOP",
+                                    "path": "/project1/myProject/op1"
+                                },
+                                "extensions": {}
+                            },
+                            "op2": {
+                                "op": {
+                                    "name": "op2",
+                                    "type": "moviefileinTOP",
+                                    "path": "/project1/myProject/op2"
+                                },
+                                "extensions": {}
+                            },
+                            "op3": {
+                                "op": {
+                                    "name": "op3",
+                                    "type": "moviefileinTOP",
+                                    "path": "/project1/myProject/op3"
+                                },
+                                "extensions": {}
+                            }
+                        },
+                        "extensions": {}
+                    }
+                },
+                "extensions": {}
+            }
+        test_result = test_or_expected == match
 
-		# Handle dynamic timestamps in extensions
-		_normalize_timestamps_for_comparison(actual_storage, expected_copy)
+        if test_name == 'storage':
+            import copy
+            actual_storage = current_storage()
+            expected_copy = copy.deepcopy(test_or_expected)
 
-		test_result = actual_storage == expected_copy
-		if test_result:
-			log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
-			return True
-		else:
-			log('\n STORAGE INCONGRUENCY \n', status='test', process='result')
-			# Log the actual vs expected for debugging
-			log(f'Expected: {json.dumps(expected_copy, indent=2)}', status='test', process='debug')
-			log(f'Actual: {json.dumps(actual_storage, indent=2)}', status='test', process='debug')
-			raise ValueError('\n STORAGE INCONGRUENCY \n')
-	else:
-		# Handle regular boolean tests
-		if test_or_expected:
-			log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
-			return True
-		else:
-			log(f'\n{msg} --> {test_name.upper()} TEST FAILED\n', status='test', process='result')
-			raise Exception(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
+            # Handle dynamic timestamps in extensions
+            _normalize_timestamps_for_comparison(actual_storage, expected_copy)
+
+            test_result = actual_storage == expected_copy
+            if test_result:
+                log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
+                return True
+            else:
+                log('\n STORAGE INCONGRUENCY \n', status='test', process='result')
+                # Log the actual vs expected for debugging
+                log(f'Expected: {json.dumps(expected_copy, indent=2)}', status='test', process='debug')
+                log(f'Actual: {json.dumps(actual_storage, indent=2)}', status='test', process='debug')
+                raise ValueError('\n STORAGE INCONGRUENCY \n')
+        if test_name == '_storage() test 1':
+            if test_result:
+                log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='_storage() test 1')
+                return True
+            else:
+                log(f'\n{msg} --> {test_name.upper()} TEST FAILED\n', status='test', process='result')
+                raise Exception(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
+        else:
+            # Handle regular boolean tests
+            if test_or_expected:
+                log(f'\n{msg} --> {test_name.upper()} TEST PASSED\n', status='test', process='result')
+                return True
+            else:
+                log(f'\n{msg} --> {test_name.upper()} TEST FAILED\n', status='test', process='result')
+                raise Exception(f'\n{msg} --> {test_name.upper()} TEST FAILED\n')
+        
+        
 
 def normalize_storage_for_comparison(storage):
     """Normalize storage by replacing OP objects and extensions with placeholders for comparison."""
