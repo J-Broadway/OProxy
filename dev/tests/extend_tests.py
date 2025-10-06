@@ -71,3 +71,22 @@ test = opr._extend('test', cls='myClass', dat='extensions_for_tests', args=['arg
 log(test.testFunc())
 tf.info('Checking Storage For Root Level Extensions')
 tf.current_storage('Should see extensions stored in storage')
+expected ={
+  "OProxies": {
+    "children": {},
+    "extensions": {
+      "test": {
+        "cls": "myClass",
+        "func": None,
+        "dat_path": "/project1/myProject/extensions_for_tests",
+        "args": [
+          "arg"
+        ],
+        "call": True,
+        "created_at": 1759721185.814926
+      }
+    }
+  }
+}
+tf.passed(expected, 'storage', 'Checking if root extensions storage matches expected')
+print('yo')
