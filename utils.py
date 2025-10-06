@@ -164,3 +164,42 @@ def td_isinstance(value, expected_type, allow_string=True):
         raise ValueError(f"Provided OP is not valid: {value}")
     
     return value
+
+
+def make_serializable(storage):
+    """
+    Make storage dictionary serializable by replacing TouchDesigner operator objects with dicts
+    and removing redundant path keys.
+
+    Recursively walks the storage structure and:
+    - Replaces TouchDesigner operator objects with serializable dicts containing name, type, path
+    - Removes the separate 'path' key since it's now included in the operator dict
+
+    Args:
+        storage: The storage dictionary to make serializable
+
+    Returns:
+        A new dictionary with operator objects replaced by serializable dicts
+    """
+    if hasattr(storage, 'getRaw'):
+        storage = storage.getRaw()
+    if hasattr(storage, 'items') and callable(storage.items):
+        serializable = {}
+        for key, value in storage.items():
+            if hasattr(value, 'val'):
+                value = value.val
+            if key == 'op' and hasattr(value, 'name') and hasattr(value, 'path') and hasattr(value, 'OPType'):
+                serializable[key] = {
+                    'name': value.name,
+                    'type': value.OPType,
+                    'path': value.path
+                }
+            elif key == 'path' and 'op' in storage:
+                continue
+            else:
+                serializable[key] = make_serializable(value)
+        return serializable
+    elif isinstance(storage, list):
+        return [make_serializable(item) for item in storage]
+    else:
+        return storage

@@ -5,6 +5,7 @@ import types
 import time
 import traceback
 import inspect
+import json
 from utils import td_isinstance
 
 ''' LLM Notes:
@@ -320,6 +321,69 @@ class OPLeaf(OPBaseWrapper):
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
 
+    def _storage(self, keys=None):
+        """
+        Public method to view serialized storage branch. Intended for public usage, not internal; use _store() for serialization.
+        """
+        root = self.__find_root()
+        if hasattr(root, 'OProxies'):
+            storage = root.OProxies.getRaw() if hasattr(root.OProxies, 'getRaw') else dict(root.OProxies)
+        else:
+            raise RuntimeError("No storage found")
+
+        if self._path == "":
+            if isinstance(self, OPContainer) and self.is_root:
+                branch = storage
+            elif isinstance(self, OProxyExtension):
+                if not hasattr(self, '_extension_name'):
+                    raise AttributeError("Extension has no _extension_name")
+                parent_branch = self.parent._storage(keys=None)
+                if 'extensions' not in parent_branch:
+                    raise KeyError("No extensions in parent")
+                if self._extension_name not in parent_branch['extensions']:
+                    raise KeyError(self._extension_name)
+                branch = parent_branch['extensions'][self._extension_name]
+            else:
+                raise RuntimeError("Empty path for non-root non-extension")
+        else:
+            path_segments = self._path.split('.')
+            branch = storage
+            for segment in path_segments[:-1]:
+                if segment not in branch['children']:
+                    raise KeyError(segment)
+                branch = branch['children'][segment]
+            last = path_segments[-1]
+            if isinstance(self, OPContainer):
+                if last not in branch['children']:
+                    raise KeyError(last)
+                branch = branch['children'][last]
+            elif isinstance(self, OPLeaf):
+                if last not in branch['ops']:
+                    raise KeyError(last)
+                branch = branch['ops'][last]
+            else:
+                raise TypeError("Unsupported type for path navigation")
+
+        if keys is not None:
+            if isinstance(keys, str):
+                if keys not in branch:
+                    raise KeyError(f"'{keys}' not found")
+                branch = branch[keys]
+            elif isinstance(keys, list):
+                result = {}
+                for k in keys:
+                    if k not in branch:
+                        raise KeyError(f"'{k}' not found")
+                    result[k] = branch[k]
+                branch = result
+            else:
+                raise TypeError("keys must be str or list of str")
+
+        serialized = utils.make_serializable(branch)
+        output = json.dumps(serialized, indent=4)
+        print(output)
+        return output
+
 
 class OProxyExtension(OPBaseWrapper):
     """
@@ -456,6 +520,69 @@ class OProxyExtension(OPBaseWrapper):
     def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
         """Extensions cannot extend themselves."""
         raise NotImplementedError("Extensions cannot be extended")
+
+    def _storage(self, keys=None):
+        """
+        Public method to view serialized storage branch. Intended for public usage, not internal; use _store() for serialization.
+        """
+        root = self.__find_root()
+        if hasattr(root, 'OProxies'):
+            storage = root.OProxies.getRaw() if hasattr(root.OProxies, 'getRaw') else dict(root.OProxies)
+        else:
+            raise RuntimeError("No storage found")
+
+        if self._path == "":
+            if isinstance(self, OPContainer) and self.is_root:
+                branch = storage
+            elif isinstance(self, OProxyExtension):
+                if not hasattr(self, '_extension_name'):
+                    raise AttributeError("Extension has no _extension_name")
+                parent_branch = self.parent._storage(keys=None)
+                if 'extensions' not in parent_branch:
+                    raise KeyError("No extensions in parent")
+                if self._extension_name not in parent_branch['extensions']:
+                    raise KeyError(self._extension_name)
+                branch = parent_branch['extensions'][self._extension_name]
+            else:
+                raise RuntimeError("Empty path for non-root non-extension")
+        else:
+            path_segments = self._path.split('.')
+            branch = storage
+            for segment in path_segments[:-1]:
+                if segment not in branch['children']:
+                    raise KeyError(segment)
+                branch = branch['children'][segment]
+            last = path_segments[-1]
+            if isinstance(self, OPContainer):
+                if last not in branch['children']:
+                    raise KeyError(last)
+                branch = branch['children'][last]
+            elif isinstance(self, OPLeaf):
+                if last not in branch['ops']:
+                    raise KeyError(last)
+                branch = branch['ops'][last]
+            else:
+                raise TypeError("Unsupported type for path navigation")
+
+        if keys is not None:
+            if isinstance(keys, str):
+                if keys not in branch:
+                    raise KeyError(f"'{keys}' not found")
+                branch = branch[keys]
+            elif isinstance(keys, list):
+                result = {}
+                for k in keys:
+                    if k not in branch:
+                        raise KeyError(f"'{k}' not found")
+                    result[k] = branch[k]
+                branch = result
+            else:
+                raise TypeError("keys must be str or list of str")
+
+        serialized = utils.make_serializable(branch)
+        output = json.dumps(serialized, indent=4)
+        print(output)
+        return output
 
 
 class OPContainer(OPBaseWrapper):
@@ -1207,3 +1334,66 @@ class OPContainer(OPBaseWrapper):
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
         return extension
+
+    def _storage(self, keys=None):
+        """
+        Public method to view serialized storage branch. Intended for public usage, not internal; use _store() for serialization.
+        """
+        root = self.__find_root()
+        if hasattr(root, 'OProxies'):
+            storage = root.OProxies.getRaw() if hasattr(root.OProxies, 'getRaw') else dict(root.OProxies)
+        else:
+            raise RuntimeError("No storage found")
+
+        if self._path == "":
+            if isinstance(self, OPContainer) and self.is_root:
+                branch = storage
+            elif isinstance(self, OProxyExtension):
+                if not hasattr(self, '_extension_name'):
+                    raise AttributeError("Extension has no _extension_name")
+                parent_branch = self.parent._storage(keys=None)
+                if 'extensions' not in parent_branch:
+                    raise KeyError("No extensions in parent")
+                if self._extension_name not in parent_branch['extensions']:
+                    raise KeyError(self._extension_name)
+                branch = parent_branch['extensions'][self._extension_name]
+            else:
+                raise RuntimeError("Empty path for non-root non-extension")
+        else:
+            path_segments = self._path.split('.')
+            branch = storage
+            for segment in path_segments[:-1]:
+                if segment not in branch['children']:
+                    raise KeyError(segment)
+                branch = branch['children'][segment]
+            last = path_segments[-1]
+            if isinstance(self, OPContainer):
+                if last not in branch['children']:
+                    raise KeyError(last)
+                branch = branch['children'][last]
+            elif isinstance(self, OPLeaf):
+                if last not in branch['ops']:
+                    raise KeyError(last)
+                branch = branch['ops'][last]
+            else:
+                raise TypeError("Unsupported type for path navigation")
+
+        if keys is not None:
+            if isinstance(keys, str):
+                if keys not in branch:
+                    raise KeyError(f"'{keys}' not found")
+                branch = branch[keys]
+            elif isinstance(keys, list):
+                result = {}
+                for k in keys:
+                    if k not in branch:
+                        raise KeyError(f"'{k}' not found")
+                    result[k] = branch[k]
+                branch = result
+            else:
+                raise TypeError("keys must be str or list of str")
+
+        serialized = utils.make_serializable(branch)
+        output = json.dumps(serialized, indent=4)
+        print(output)
+        return output
