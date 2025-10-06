@@ -35,7 +35,7 @@ class root(OPContainer):
             }
         ]
         # 'OProxies' gets nested in'rootStorage' since 'root' is the name of the container extension and TD inits storage as '<extension_name>Storage'
-        self.storage = StorageManager(self, ownerComp, storedItems)
+        self._storage = StorageManager(self, ownerComp, storedItems)
 
         # Migrate old storage format to new format if needed
         self._migrate_storage_format()
@@ -109,15 +109,24 @@ class root(OPContainer):
 
         Log("Starting _clear operation", status='info', process='_clear')
 
-        # Clear the existing storage dict instead of replacing it to maintain StorageManager reference
-        Log(f"Clearing OProxies storage with {len(self.OProxies.get('children', {}))} containers", status='debug', process='_clear')
-        self.OProxies.clear()
-        self.OProxies.update({'children': {}, 'extensions': {}})
-        Log("Reset OProxies to empty state", status='debug', process='_clear')
+        # Clear root level extensions first
+        Log(f"Clearing root extensions: {list(self._extensions.keys())}", status='debug', process='_clear')
+        for extension_name in list(self._extensions.keys()):
+            try:
+                extension = self._extensions[extension_name]
+                extension._remove()
+                Log(f"Removed root extension '{extension_name}'", status='debug', process='_clear')
+            except Exception as e:
+                Log(f"Failed to remove root extension '{extension_name}': {e}", status='warning', process='_clear')
 
-        # Clear in-memory hierarchy as well
+        # Restore storage to default
+        Log("Restoring OProxies to default empty state", status='debug', process='_clear')
+        self._storage.restoreDefault('OProxies')
+
+        # Clear in-memory hierarchy
         Log(f"Clearing in-memory hierarchy with {len(self._children)} containers", status='debug', process='_clear')
         self._children.clear()
+        self._extensions.clear()  # Clear any remaining extension references
 
         Log("Reloading empty hierarchy", status='debug', process='_clear')
         self._refresh()  # Reload from the now-empty storage

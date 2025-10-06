@@ -1,42 +1,9 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing OProxies storage with 1 containers
- Reset OProxies to empty state
- Clearing in-memory hierarchy with 1 containers
+<OProxy [DEBUG:_clear]> Clearing root extensions: ['test']
+<OProxy [INFO:_remove]> Extension 'test' removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'test'
+ Restoring OProxies to default empty state
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
-<OProxy [TEST:info]> 
-Creating extension class
-
-<OProxy [INFO:_extend]> Extension 'test' added to container 'root'
-<OProxy [TEST:info]> 
-Checking to make sure we can access "testFunc()" from extension class
-
-<OProxy [INFO]> testFunc called I AM WORKING YAY
-<OProxy [TEST:info]> 
-checking call=True for class extension
-
-<OProxy [INFO:_extend]> Extension 'test' added to container 'root'
-<OProxy [INFO]> testFunc called I AM WORKING YAY
-<OProxy [TEST:info]> 
-Checking Storage For Root Level Extensions
-
-<OProxy [TEST:storage]> 
-Should see extensions stored in storage --> {
-  "OProxies": {
-    "children": {},
-    "extensions": {
-      "test": {
-        "cls": "myClass",
-        "func": null,
-        "dat_path": "/project1/myProject/extensions_for_tests",
-        "args": [
-          "arg"
-        ],
-        "call": true,
-        "created_at": 1759649378.5194604
-      }
-    }
-  }
-}
-
