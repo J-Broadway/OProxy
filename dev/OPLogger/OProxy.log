@@ -5,3 +5,48 @@
  Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
+<OProxy [DEBUG:_storage]> Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+ Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+ Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+ Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+ Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+ Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [INFO:Init]> OProxy root initialized
+<OProxy [DEBUG:_storage]> Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+ Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [INFO:Init]> OProxy root initialized
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [INFO:Init]> OProxy root initialized
+<OProxy [DEBUG:_storage]> Storage branch for root: {
+    "children": {},
+    "extensions": {}
+}
