@@ -1063,9 +1063,16 @@ class OPContainer(OPBaseWrapper):
                 if isinstance(child, OPContainer):
                     child._refresh()
 
-            # Update storage if this is root
+            # Update storage
             if self.is_root:
                 self._update_storage()
+            else:
+                # Find root and update storage for non-root containers
+                root = self
+                while root._parent is not None:
+                    root = root._parent
+                if hasattr(root, 'OProxies'):
+                    root._update_storage()
 
         except Exception as e:
             Log(f"Container refresh failed for {self.path}: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
@@ -1082,6 +1089,9 @@ class OPContainer(OPBaseWrapper):
 
         ops_data = stored_data.get('ops', {})
 
+        # Rebuild children dictionary to preserve order from storage
+        new_children = {}
+
         for stored_key, op_info in ops_data.items():
             if isinstance(op_info, str):
                 # Legacy format support (simple path string)
@@ -1094,34 +1104,37 @@ class OPContainer(OPBaseWrapper):
                 stored_op = op_info.get('op')  # Raw OP object for name change detection
                 op_extensions = op_info.get('extensions', {})
 
+            Log(f"Loading nested OP '{stored_key}' from '{op_path}'", status='debug', process='_refresh')
+
             # Try to get OP by stored path first
             op = td.op(op_path) if op_path else None
 
             # If that fails but we have a stored OP object, use it (handles renames)
             if not (op and op.valid) and stored_op and stored_op.valid:
                 op = stored_op
+                Log(f"Using stored OP object for nested '{stored_key}' (original path may have changed)", status='debug', process='_refresh')
 
             if op and op.valid:
                 # Check for name changes
                 current_name = op.name
                 if stored_key != current_name:
-                    # Remove old mapping
-                    if stored_key in self._children:
-                        del self._children[stored_key]
+                    Log(f"Nested OP name changed from '{stored_key}' to '{current_name}', updating mapping", status='info', process='_refresh')
 
-                    # Add with new name
-                    leaf_path = f"{self.path}.{current_name}"
-                    leaf = OPLeaf(op, path=leaf_path, parent=self)
+                # Add with current name (which may be different from stored_key)
+                leaf_path = f"{self.path}.{current_name}"
+                leaf = OPLeaf(op, path=leaf_path, parent=self)
 
-                    # Load extensions onto the leaf
-                    if op_extensions:
-                        leaf._extensions = op_extensions
+                # Load extensions onto the leaf
+                if op_extensions:
+                    leaf._extensions = op_extensions
 
-                    self._children[current_name] = leaf
+                new_children[current_name] = leaf
             else:
-                # OP not found or invalid - remove from container
-                if stored_key in self._children:
-                    del self._children[stored_key]
+                # OP not found or invalid - skip adding to new children
+                Log(f"Nested OP '{op_path}' not found or invalid, skipping", status='warning', process='_refresh')
+
+        # Replace the children dictionary with the rebuilt one
+        self._children = new_children
 
     def _refresh_extensions(self, target=None):
         """Load stored extension metadata and re-extract from DATs."""
