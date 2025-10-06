@@ -89,3 +89,7 @@ expected ={
   }
 }
 tf.passed(expected, 'storage', 'Checking if root extensions storage matches expected')
+
+tf.info('going to reinitiate container extensions to check if extention persistence is working')
+parent.src.par.reinitextensions.pulse()
+log(test.testFunc())
