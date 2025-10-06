@@ -96,4 +96,30 @@ tf.info('going to reinitiate container extensions to check if extention persiste
 parent.src.par.reinitextensions.pulse()
 log(test.testFunc())
 
-tf.info('now going to try re-naming checks for extensions')
+tf.info('Starting tests to re-name extension dats and check of OPRoxy gracefully handles DAT rename detection.\nClearing Storage...')
+# First make sure test dats are named properly
+if t := op('renamed_extensions'):
+	t.name = "rename_extensions_for_tests"
+
+opr._clear()
+opr._storage()
+tf.info("Creating opr._extend('test', cls='myClass', dat='rename_extensions_for_tests', call=True) ")
+opr._extend('test', cls='myClass', dat='rename_extensions_for_tests', call=True)
+tf.info("Here's what storage looks like")
+opr._storage()
+tf.info("Running log(opr.test.testFunc()) to ake sure it's printing correctly")
+log(opr.test.testFunc())
+
+tf.info("Now going to test renaming the dat then reloading extensions to see if the name change is gracefully handled")
+op('rename_extensions_for_tests').name = 'renamed_extensions'
+
+tf.info("Going to re-init container extensions")
+parent.src.par.reinitextensions.pulse()
+
+tf.info("Running 'opr.test.testFunc()' to see if it still works after name change")
+log(opr.test.testFunc())
+
+tf.info("If you're reading this it worked! \nRe-naming the DAT back to it's original...")
+op('renamed_extensions').name = 'rename_extensions_for_tests'
+
+tf.info("++++++++++++++++++++++EXTEND TESTS PASSED++++++++++++++++++++++")

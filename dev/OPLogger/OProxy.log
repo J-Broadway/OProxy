@@ -1,10 +1,67 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: []
+<OProxy [DEBUG:_clear]> Clearing root extensions: ['test']
+<OProxy [INFO:_remove]> Extension 'test' removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'test'
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {},
+    "extensions": {}
+}
 <OProxy [TEST:info]> 
-++++++++++++++++++++++_Store() TESTS PASSED++++++++++++++++++++++
+Creating opr._extend('test', cls='myClass', dat='rename_extensions_for_tests', call=True) 
+
+<OProxy [INFO:_extend]> Extension 'test' added to container 'root'
+<OProxy [TEST:info]> 
+Here's what storage looks like
+
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {},
+    "extensions": {
+        "test": {
+            "cls": "myClass",
+            "func": null,
+            "dat_op": {
+                "name": "rename_extensions_for_tests",
+                "type": "textDAT",
+                "path": "/project1/myProject/rename_extensions_for_tests"
+            },
+            "args": null,
+            "call": true,
+            "created_at": 1759726134.1175344
+        }
+    }
+}
+<OProxy [TEST:info]> 
+Running log(opr.test.testFunc()) to ake sure it's printing correctly
+
+<OProxy [INFO]> testFunc called I AM WORKING YAY
+<OProxy [TEST:info]> 
+Now going to test renaming the dat then reloading extensions to see if the name change is gracefully handled
+
+ 
+Going to re-init container extensions
+
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [DEBUG:_refresh]> Using stored DAT for extension 'test' (path may have changed)
+ Extension 'test' DAT path changed from '/project1/myProject/rename_extensions_for_tests' to '/project1/myProject/renamed_extensions', updating metadata
+<OProxy [INFO:_extend]> Extension 'test' added to container 'root'
+<OProxy [DEBUG:_refresh]> Loaded root extension 'test' from storage
+<OProxy [INFO:Init]> OProxy root initialized
+<OProxy [TEST:info]> 
+Running 'opr.test.testFunc()' to see if it still works after name change
+
+<OProxy [INFO]> testFunc called I AM WORKING YAY
+<OProxy [TEST:info]> 
+If you're reading this it worked! 
+Re-naming the DAT back to it's original...
+
+ 
+++++++++++++++++++++++EXTEND TESTS PASSED++++++++++++++++++++++
 
