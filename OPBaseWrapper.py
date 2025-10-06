@@ -995,6 +995,12 @@ class OPContainer(OPBaseWrapper):
                         args = ext_metadata.get('args')
                         call = ext_metadata.get('call', False)
 
+                        # Ensure args is in the correct format
+                        if args is not None and not isinstance(args, (tuple, list)):
+                            args = [args]  # Convert single values to list
+                        elif args is not None:
+                            args = list(args)  # Ensure it's a list
+
                         if dat_path:
                             # Recreate the extension
                             extension = self._extend(ext_name, cls=cls, func=func, dat=dat_path, args=args, call=call)
@@ -1086,13 +1092,45 @@ class OPContainer(OPBaseWrapper):
                     log=Log
                 )
 
-                # Re-wrap in factory template
-                extension = OProxyExtension(actual_obj, self,
-                                          source_dat=metadata['dat_path'],
-                                          metadata=metadata)
+                # Handle call parameter from stored metadata
+                call = metadata.get('call', False)
+                args = metadata.get('args')
 
-                # Store extension name for removal purposes
-                extension._extension_name = ext_name
+                if call:
+                    if args is not None and not isinstance(args, (tuple, list)):
+                        raise TypeError("args must be a tuple or list of positional arguments when call=True")
+
+                    try:
+                        if isinstance(actual_obj, type):  # Class instantiation
+                            instance = actual_obj(*args) if args else actual_obj()
+                            extension = OProxyExtension(instance, self, metadata['dat_path'], metadata)
+                            extension._extension_name = ext_name
+                        else:  # Function call
+                            import inspect
+                            import types
+                            sig = inspect.signature(actual_obj)
+                            params = list(sig.parameters.values())
+                            has_self = params and params[0].name == 'self'
+
+                            if has_self:
+                                bound_method = types.MethodType(actual_obj, self)
+                                bound_method(*args) if args else bound_method()
+                            else:
+                                actual_obj(*args) if args else actual_obj()
+
+                            extension = OProxyExtension(actual_obj, self, metadata['dat_path'], metadata)
+                            extension._extension_name = ext_name
+                    except Exception as e:
+                        Log(f"Extension call execution failed during refresh: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
+                        raise
+                else:
+                    # Re-wrap in factory template
+                    extension = OProxyExtension(actual_obj, self,
+                                              source_dat=metadata['dat_path'],
+                                              metadata=metadata)
+
+                    # Store extension name for removal purposes
+                    extension._extension_name = ext_name
 
                 # Apply to parent object
                 setattr(self, ext_name, extension)
@@ -1236,15 +1274,18 @@ class OPContainer(OPBaseWrapper):
             # Prepare metadata
             metadata = {
                 'cls': cls, 'func': func, 'dat_path': dat.path,
-                'args': args, 'call': call, 'created_at': time.time()
+                'args': list(args) if args is not None else None, 'call': call, 'created_at': time.time()
             }
 
             extension = None
 
             # Handle call parameter
             if call:
-                if args is not None and not isinstance(args, (tuple, list)):
-                    raise TypeError("args must be a tuple or list of positional arguments when call=True")
+                if args is not None:
+                    if not isinstance(args, (tuple, list)):
+                        raise TypeError("args must be a tuple or list of positional arguments when call=True")
+                    # Convert to list for consistent handling
+                    args = list(args)
 
                 try:
                     if isinstance(actual_obj, type):  # Class instantiation
