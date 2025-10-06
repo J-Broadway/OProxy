@@ -1,67 +1,226 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: ['test']
-<OProxy [INFO:_remove]> Extension 'test' removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'test'
+<OProxy [DEBUG:_clear]> Clearing root extensions: []
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 0 containers
+ Clearing in-memory hierarchy with 1 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
+<OProxy [TEST:info]> 
+Adding container
+
+<OProxy [DEBUG:_add]> Processing 'items' in container 'root'
+<OProxy [INFO:_add]> Creating new container 'items'
+<OProxy [DEBUG:_add]> List of OPs provided, count: 3
+ Validating OP 1/3: op1
+ Validated OP: op1 (path: /project1/myProject/op1)
+ Validating OP 2/3: op2
+ Validated OP: op2 (path: /project1/myProject/op2)
+ Validating OP 3/3: op3
+ Validated OP: op3 (path: /project1/myProject/op3)
+ Creating container with path 'items'
+ Adding 3 OPs as leaves to container 'items'
+ Creating leaf for OP 'op1' with path 'items.op1'
+ Creating leaf for OP 'op2' with path 'items.op2'
+ Creating leaf for OP 'op3' with path 'items.op3'
+ Adding container 'items' to parent children dict
+<OProxy [INFO:_add]> Successfully created container 'items' with 3 OPs
+<OProxy [DEBUG:_update_storage]> Saving container hierarchy to storage
+ Saved 1 top-level containers to storage
+<OProxy [TEST:info]> 
+Showing storage after _add()
+
 <OProxy [INFO:_storage]> Storage branch for container 'root'
 "root" : {
-    "children": {},
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "op1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
     "extensions": {}
 }
 <OProxy [TEST:info]> 
-Creating opr._extend('test', cls='myClass', dat='rename_extensions_for_tests', call=True) 
+Calling opr.items('op1').name
 
-<OProxy [INFO:_extend]> Extension 'test' added to container 'root'
+<OProxy [INFO]> opr.items('op1') ------> op1
 <OProxy [TEST:info]> 
-Here's what storage looks like
+Renaming "op1" to "changed1"
+
+ 
+Logging opr.items('op1').name to show it still works before refresh. Below you should see name is 'changed1'
+
+<OProxy [INFO]> changed1
+<OProxy [TEST:info]> 
+showing storage before opr._refresh() 
 
 <OProxy [INFO:_storage]> Storage branch for container 'root'
 "root" : {
-    "children": {},
-    "extensions": {
-        "test": {
-            "cls": "myClass",
-            "func": null,
-            "dat_op": {
-                "name": "rename_extensions_for_tests",
-                "type": "textDAT",
-                "path": "/project1/myProject/rename_extensions_for_tests"
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
             },
-            "args": null,
-            "call": true,
-            "created_at": 1759726134.1175344
+            "extensions": {}
         }
-    }
+    },
+    "extensions": {}
 }
 <OProxy [TEST:info]> 
-Running log(opr.test.testFunc()) to ake sure it's printing correctly
+Now Running _refresh()
 
-<OProxy [INFO]> testFunc called I AM WORKING YAY
+<OProxy [DEBUG:_refresh]> Loading nested container 'items' under ''
+ Loading nested OP 'op1' from '/project1/myProject/op1'
+ Using stored OP object for nested 'op1' (original path may have changed)
+<OProxy [INFO:_refresh]> Nested OP name changed from 'op1' to 'changed1', updating mapping
+<OProxy [DEBUG:_refresh]> Loading nested OP 'op2' from '/project1/myProject/op2'
+ Loading nested OP 'op3' from '/project1/myProject/op3'
 <OProxy [TEST:info]> 
-Now going to test renaming the dat then reloading extensions to see if the name change is gracefully handled
+checking if name was changed to "changed1"
 
  
-Going to re-init container extensions
-
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [DEBUG:_refresh]> Using stored DAT for extension 'test' (path may have changed)
- Extension 'test' DAT path changed from '/project1/myProject/rename_extensions_for_tests' to '/project1/myProject/renamed_extensions', updating metadata
-<OProxy [INFO:_extend]> Extension 'test' added to container 'root'
-<OProxy [DEBUG:_refresh]> Loaded root extension 'test' from storage
-<OProxy [INFO:Init]> OProxy root initialized
-<OProxy [TEST:info]> 
-Running 'opr.test.testFunc()' to see if it still works after name change
-
-<OProxy [INFO]> testFunc called I AM WORKING YAY
-<OProxy [TEST:info]> 
-If you're reading this it worked! 
-Re-naming the DAT back to it's original...
+Name was changed to changed1
 
  
-++++++++++++++++++++++EXTEND TESTS PASSED++++++++++++++++++++++
+Here's the storage after refresh
 
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "changed1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}
+<OProxy [TEST:info]> 
+Changing name back to 'op1
+
+ 
+going to call the new name without refreshing to make sure an error gets called
+
+<OProxy [INFO]> Error triggered as expected...
+<OProxy [TEST:info]> 
+Now doing opr.items._refresh() to make sure it works
+
+ 
+checking if name was changed
+
+ 
+Can confirm name is "op1"
+
+ 
+Here's storage
+
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "changed1": {
+                    "op": {
+                        "name": "op1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}
