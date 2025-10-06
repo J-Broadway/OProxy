@@ -9,7 +9,43 @@ opr._clear()
 tf.info('Adding container')
 opr._add('items', tf.mvs)
 tf.info('Showing storage after _add()')
-opr._storage()
+current_storage = opr._storage()
+expected = '''{
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "op1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}'''
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after _add()')
 
 tf.info("Calling opr.items('op1').name")
 log(f"opr.items('op1') ------> {opr.items('op1').name}")
@@ -19,7 +55,43 @@ opr.items[0].name = 'changed1'
 tf.info("Logging opr.items('op1').name to show it still works before refresh. Below you should see name is 'changed1'")
 log(opr.items('op1').name)
 tf.info("showing storage before opr._refresh() ")
-opr._storage()
+current_storage = opr._storage()
+expected = '''{
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}'''
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after renaming "op1" to "changed1" "op1" does not have the proper name yet because _refresh() has not been run yet')
 
 tf.info('Now Running _refresh()')
 opr._refresh()
@@ -34,7 +106,43 @@ except KeyError as e:
     log(e)
     raise
 tf.info("Here's the storage after refresh")
-opr._storage()
+current_storage = opr._storage()
+expected = '''{
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "changed1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}'''
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after refresh')
 tf.info("Changing name back to 'op1")
 opr.items('changed1').name = 'op1'
 tf.info("going to call the new name without refreshing to make sure an error gets called")
@@ -55,4 +163,41 @@ except KeyError as e:
     log(e)
 
 tf.info("Here's storage")
-opr._storage()
+current_storage = opr._storage()
+expected = '''{
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "op1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "op2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}'''
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after refresh')
+tf.done('refresh')

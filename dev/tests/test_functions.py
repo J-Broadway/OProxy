@@ -1,3 +1,5 @@
+"""sry for the spaghetti code"""
+
 import json
 import copy
 log = op('OProxy').Log
@@ -21,6 +23,16 @@ def info(msg):
 
 def hault():
 	raise Exception('User manually haulted tests')
+
+def done(test):
+	log(f"\n============={test.upper()} TESTS COMPLETED=============\n")
+
+def testCheck(expected, test_name, msg):
+	"""Initially written for _refresh() tests"""
+	if expected == True:
+		log(f"{msg} -------> TEST PASSED")
+	else:
+		raise Exception(log(f"{msg} -------> {test_name.capitalize()} TEST FAILED"))
 
 def passed(test_or_expected, test_name, msg):
 	if test_name == '_storage() test 1':
