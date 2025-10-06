@@ -89,7 +89,7 @@ def normalize_storage_for_comparison(storage):
         for key, value in storage.items():
             if hasattr(value, '__class__') and value.__class__.__name__ == 'OProxyExtension':
                 normalized[key] = "<OPROXY_EXTENSION>"
-            elif key == 'op' and hasattr(value, 'name'):  # It's an OP object
+            elif key in ['op', 'dat_op'] and hasattr(value, 'name'):  # It's an OP object
                 normalized[key] = "<OP_OBJECT>"
             else:
                 normalized[key] = normalize_storage_for_comparison(value)

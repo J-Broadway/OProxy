@@ -266,27 +266,53 @@ class OPLeaf(OPBaseWrapper):
 
         for ext_name, metadata in extensions_data.items():
             try:
-                # Re-extract the actual object
-                actual_obj = mod_ast.Main(
-                    cls=metadata['cls'],
-                    func=metadata['func'],
-                    op=metadata['dat_path'],
-                    log=Log
-                )
+                # New: Add fallback
+                dat_path = metadata['dat_path']
+                dat_op = metadata.get('dat_op')
 
-                # Re-wrap in factory template
-                extension = OProxyExtension(actual_obj, self,
-                                          source_dat=metadata['dat_path'],
-                                          metadata=metadata)
+                dat = td.op(dat_path) if dat_path else None
+                if not (dat and dat.valid) and dat_op and dat_op.valid:
+                    dat = dat_op
+                    Log(f"Using stored DAT for leaf extension '{ext_name}' on '{self.path}' (path may have changed)", status='debug', process='_refresh')
 
-                # Store extension name for removal purposes
-                extension._extension_name = ext_name
+                if dat and dat.valid:
+                    if dat_path != dat.path:
+                        Log(f"Leaf extension '{ext_name}' DAT path changed to '{dat.path}', updating metadata", status='debug', process='_refresh')
+                        metadata['dat_path'] = dat.path
+                        metadata['dat_op'] = dat
+                        changed = True
+                    else:
+                        changed = False
 
-                # Apply to parent object
-                setattr(self, ext_name, extension)
+                    # Then existing re-extract, but use dat for op=
+                    actual_obj = mod_ast.Main(
+                        cls=metadata['cls'],
+                        func=metadata['func'],
+                        op=dat,  # Use resolved dat
+                        log=Log
+                    )
 
-                # Store in registry
-                self._extensions[ext_name] = extension
+                    # Re-wrap in factory template
+                    extension = OProxyExtension(actual_obj, self,
+                                              source_dat=metadata['dat_path'],
+                                              metadata=metadata)
+
+                    # Store extension name for removal purposes
+                    extension._extension_name = ext_name
+
+                    # Apply to parent object
+                    setattr(self, ext_name, extension)
+
+                    # Store in registry
+                    self._extensions[ext_name] = extension
+
+                    # After setting extension
+                    if changed and self._parent:
+                        self._parent._update_storage()
+
+                else:
+                    Log(f"Could not resolve DAT for extension '{ext_name}' on leaf '{self.path}'", status='warning', process='_refresh')
+                    continue
 
             except Exception as e:
                 Log(f"Failed to reload extension '{ext_name}' on leaf '{self.path}': {e}\n{traceback.format_exc()}", status='warning', process='_refresh')
@@ -346,6 +372,7 @@ class OPLeaf(OPBaseWrapper):
             # Prepare metadata
             metadata = {
                 'cls': cls, 'func': func, 'dat_path': dat.path,
+                'dat_op': dat,  # Add this for rename fallback
                 'args': args, 'call': call, 'created_at': time.time()
             }
 
@@ -988,23 +1015,46 @@ class OPContainer(OPBaseWrapper):
                 extensions_data = self.OProxies.get('extensions', {})
                 for ext_name, ext_metadata in extensions_data.items():
                     try:
-                        # Recreate extension from stored metadata
                         cls = ext_metadata.get('cls')
                         func = ext_metadata.get('func')
                         dat_path = ext_metadata.get('dat_path')
+                        dat_op = ext_metadata.get('dat_op')  # New: get stored dat_op
                         args = ext_metadata.get('args')
                         call = ext_metadata.get('call', False)
 
-                        # Ensure args is in the correct format
                         if args is not None and not isinstance(args, (tuple, list)):
-                            args = [args]  # Convert single values to list
+                            args = [args]
                         elif args is not None:
-                            args = list(args)  # Ensure it's a list
+                            args = list(args)
 
-                        if dat_path:
-                            # Recreate the extension
-                            extension = self._extend(ext_name, cls=cls, func=func, dat=dat_path, args=args, call=call)
+                        # New: Try path first, fallback to stored dat_op
+                        dat = td.op(dat_path) if dat_path else None
+                        if not (dat and dat.valid) and dat_op and dat_op.valid:
+                            dat = dat_op
+                            Log(f"Using stored DAT for extension '{ext_name}' (path may have changed)", status='debug', process='_refresh')
+
+                        if dat and dat.valid:
+                            current_name = dat.name  # Use DAT name for extension name? No, extension name is ext_name, but if DAT renamed, perhaps update if needed. Wait, extension name is user-chosen.
+
+                            # Detect if path changed
+                            if dat_path != dat.path:
+                                Log(f"Extension '{ext_name}' DAT path changed from '{dat_path}' to '{dat.path}', updating metadata", status='debug', process='_refresh')
+                                ext_metadata['dat_path'] = dat.path
+                                ext_metadata['dat_op'] = dat  # Refresh reference
+                                changed = True
+                            else:
+                                changed = False
+
+                            # Recreate extension
+                            extension = self._extend(ext_name, cls=cls, func=func, dat=dat, args=args, call=call)
                             Log(f"Loaded root extension '{ext_name}' from storage", status='debug', process='_refresh')
+
+                            if changed:
+                                self._update_storage()  # Update storage if changed
+
+                        else:
+                            raise ValueError(f"Invalid DAT for extension '{ext_name}': Could not resolve {dat_path}")
+
                     except Exception as e:
                         Log(f"Failed to load root extension '{ext_name}' from storage: {e}", status='warning', process='_refresh')
 
@@ -1079,51 +1129,36 @@ class OPContainer(OPBaseWrapper):
         if not stored_data:
             return
 
-        extensions_data = stored_data.get('extensions', {})
-        mod_ast = mod('mod_AST')
+        extensions_data = stored_data.get('extensions', {})  # Assuming containers store 'extensions' like root
 
         for ext_name, metadata in extensions_data.items():
             try:
-                # Re-extract the actual object
-                actual_obj = mod_ast.Main(
-                    cls=metadata['cls'],
-                    func=metadata['func'],
-                    op=metadata['dat_path'],
-                    log=Log
-                )
+                # New: Add fallback
+                dat_path = metadata['dat_path']
+                dat_op = metadata.get('dat_op')
 
-                # Handle call parameter from stored metadata
-                call = metadata.get('call', False)
-                args = metadata.get('args')
+                dat = td.op(dat_path) if dat_path else None
+                if not (dat and dat.valid) and dat_op and dat_op.valid:
+                    dat = dat_op
+                    Log(f"Using stored DAT for container extension '{ext_name}' on '{self.path}' (path may have changed)", status='debug', process='_refresh')
 
-                if call:
-                    if args is not None and not isinstance(args, (tuple, list)):
-                        raise TypeError("args must be a tuple or list of positional arguments when call=True")
+                if dat and dat.valid:
+                    if dat_path != dat.path:
+                        Log(f"Container extension '{ext_name}' DAT path changed to '{dat.path}', updating metadata", status='debug', process='_refresh')
+                        metadata['dat_path'] = dat.path
+                        metadata['dat_op'] = dat
+                        changed = True
+                    else:
+                        changed = False
 
-                    try:
-                        if isinstance(actual_obj, type):  # Class instantiation
-                            instance = actual_obj(*args) if args else actual_obj()
-                            extension = OProxyExtension(instance, self, metadata['dat_path'], metadata)
-                            extension._extension_name = ext_name
-                        else:  # Function call
-                            import inspect
-                            import types
-                            sig = inspect.signature(actual_obj)
-                            params = list(sig.parameters.values())
-                            has_self = params and params[0].name == 'self'
+                    # Then existing re-extract, but use dat for op=
+                    actual_obj = mod_ast.Main(
+                        cls=metadata['cls'],
+                        func=metadata['func'],
+                        op=dat,  # Use resolved dat
+                        log=Log
+                    )
 
-                            if has_self:
-                                bound_method = types.MethodType(actual_obj, self)
-                                bound_method(*args) if args else bound_method()
-                            else:
-                                actual_obj(*args) if args else actual_obj()
-
-                            extension = OProxyExtension(actual_obj, self, metadata['dat_path'], metadata)
-                            extension._extension_name = ext_name
-                    except Exception as e:
-                        Log(f"Extension call execution failed during refresh: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
-                        raise
-                else:
                     # Re-wrap in factory template
                     extension = OProxyExtension(actual_obj, self,
                                               source_dat=metadata['dat_path'],
@@ -1132,14 +1167,22 @@ class OPContainer(OPBaseWrapper):
                     # Store extension name for removal purposes
                     extension._extension_name = ext_name
 
-                # Apply to parent object
-                setattr(self, ext_name, extension)
+                    # Apply to parent object
+                    setattr(self, ext_name, extension)
 
-                # Store in registry
-                self._extensions[ext_name] = extension
+                    # Store in registry
+                    self._extensions[ext_name] = extension
+
+                    # After setting extension
+                    if changed and self._parent:
+                        self._parent._update_storage()
+
+                else:
+                    Log(f"Could not resolve DAT for container extension '{ext_name}' on container '{self.path}'", status='warning', process='_refresh')
+                    continue
 
             except Exception as e:
-                Log(f"Failed to reload extension '{ext_name}': {e}\n{traceback.format_exc()}", status='warning', process='_refresh')
+                Log(f"Failed to reload extension '{ext_name}' on container '{self.path}': {e}\n{traceback.format_exc()}", status='warning', process='_refresh')
 
     def _get_stored_container_data(self):
         """Navigate storage hierarchy to find data for this container."""
@@ -1274,6 +1317,7 @@ class OPContainer(OPBaseWrapper):
             # Prepare metadata
             metadata = {
                 'cls': cls, 'func': func, 'dat_path': dat.path,
+                'dat_op': dat,  # Add this for rename fallback
                 'args': list(args) if args is not None else None, 'call': call, 'created_at': time.time()
             }
 

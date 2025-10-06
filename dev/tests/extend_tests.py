@@ -41,9 +41,10 @@ expected = {
             "cls": None,
             "func": "hello",
             "dat_path": "/project1/myProject/extensions_for_tests",
+            "dat_op": "<OP_OBJECT>",
             "args": None,
             "call": False,
-            "created_at": 1759638996.7720973
+            "created_at": 1759724954.9442296
           }
         }
       }
@@ -79,11 +80,12 @@ expected ={
         "cls": "myClass",
         "func": None,
         "dat_path": "/project1/myProject/extensions_for_tests",
+        "dat_op": "<OP_OBJECT>",
         "args": [
           "arg"
         ],
         "call": True,
-        "created_at": 1759721185.814926
+        "created_at": 1759725160.292602
       }
     }
   }
@@ -93,3 +95,5 @@ tf.passed(expected, 'storage', 'Checking if root extensions storage matches expe
 tf.info('going to reinitiate container extensions to check if extention persistence is working')
 parent.src.par.reinitextensions.pulse()
 log(test.testFunc())
+
+tf.info('now going to try re-naming checks for extensions')

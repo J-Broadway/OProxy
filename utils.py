@@ -188,13 +188,13 @@ def make_serializable(storage):
         for key, value in storage.items():
             if hasattr(value, 'val'):
                 value = value.val
-            if key == 'op' and hasattr(value, 'name') and hasattr(value, 'path') and hasattr(value, 'OPType'):
+            if key in ['op', 'dat_op'] and hasattr(value, 'name') and hasattr(value, 'path') and hasattr(value, 'OPType'):
                 serializable[key] = {
                     'name': value.name,
                     'type': value.OPType,
                     'path': value.path
                 }
-            elif key == 'path' and 'op' in storage:
+            elif (key == 'path' and 'op' in storage) or (key == 'dat_path' and 'dat_op' in storage):
                 continue
             else:
                 serializable[key] = make_serializable(value)
