@@ -8,12 +8,17 @@ Log = parent.opr.Log
 
 '''
 NOTES FOR LLMs:
-print(self.OProxies) # will print {'children': {}, 'extensions': []} to console
-Usage examples on how to access storage
-self.OProxies['children'] = {'hello': 'world'} # {'OProxies': {'children': {'hello': 'world'}, 'extensions': []}}
-self.OProxies['extensions'] = ['hello', 'extensions'] # Dictionary now {'OProxies': {'children': {'hello': 'world'}, 'extensions': ['hello', 'extensions']}}
-
-Storage will automatically persist after container extension re-initializations.
+- self.OProxies is a DependDict (from TDStoreTools) managed by StorageManager.
+- It behaves like a dict but triggers dependency updates on changes.
+- AVOID direct assignments like self.OProxies['key'] = value - may not trigger dependencies properly.
+- Use DependDict methods:
+  - self.OProxies.setItem('key', value) to set values and maintain dependability.
+  - self.OProxies.getRaw() to get plain dict without dependencies.
+- For full reset, use self._storage.restoreDefault('OProxies') - properly resets to default and syncs dependencies.
+- Storage persists automatically via StorageManager.
+- Direct prints: print(self.OProxies.getRaw()) shows plain dict.
+- Modifying nested structures: Ensure changes use setItem for dependability.
+- If modifying collections inside, they may need to be wrapped as DependDict/List/Set for deep dependability.
 '''
 
 class root(OPContainer):
