@@ -200,4 +200,15 @@ expected = '''{
     "extensions": {}
 }'''
 tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after refresh')
-tf.done('refresh')
+tf.info('Now going to rename "op1" --> "changed1" and "op2" --> "changed2" but only call refresh on "op1" to make sure only one name change is detected')
+opr.items('op1').name = 'changed1'
+opr.items('op2').name = 'changed2'
+tf.info('Here is storage')
+current_storage = opr._storage()
+tf.info('Running _refresh() on "op1"')
+opr.items('op1')._refresh()
+tf.info('Here is storage')
+current_storage = opr._storage()
+
+
+#tf.done('_refresh')

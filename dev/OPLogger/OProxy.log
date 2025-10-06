@@ -65,6 +65,7 @@ Showing storage after _add()
     },
     "extensions": {}
 }
+<OProxy [INFO]> Checking if storage matches expected after _add() -------> TEST PASSED
 <OProxy [TEST:info]> 
 Calling opr.items('op1').name
 
@@ -115,10 +116,16 @@ showing storage before opr._refresh()
     },
     "extensions": {}
 }
+<OProxy [INFO]> Checking if storage matches expected after renaming "op1" to "changed1" "op1" does not have the proper name yet because _refresh() has not been run yet -------> TEST PASSED
 <OProxy [TEST:info]> 
 Now Running _refresh()
 
 <OProxy [DEBUG:_refresh]> Loading nested container 'items' under ''
+ Loading nested OP 'op1' from '/project1/myProject/op1'
+ Using stored OP object for nested 'op1' (original path may have changed)
+<OProxy [INFO:_refresh]> Nested OP name changed from 'op1' to 'changed1', updating mapping
+<OProxy [DEBUG:_refresh]> Loading nested OP 'op2' from '/project1/myProject/op2'
+ Loading nested OP 'op3' from '/project1/myProject/op3'
  Loading nested OP 'op1' from '/project1/myProject/op1'
  Using stored OP object for nested 'op1' (original path may have changed)
 <OProxy [INFO:_refresh]> Nested OP name changed from 'op1' to 'changed1', updating mapping
@@ -169,6 +176,7 @@ Here's the storage after refresh
     },
     "extensions": {}
 }
+<OProxy [INFO]> Checking if storage matches expected after refresh -------> TEST PASSED
 <OProxy [TEST:info]> 
 Changing name back to 'op1
 
@@ -179,7 +187,12 @@ going to call the new name without refreshing to make sure an error gets called
 <OProxy [TEST:info]> 
 Now doing opr.items._refresh() to make sure it works
 
- 
+<OProxy [DEBUG:_refresh]> Loading nested OP 'changed1' from '/project1/myProject/changed1'
+ Using stored OP object for nested 'changed1' (original path may have changed)
+<OProxy [INFO:_refresh]> Nested OP name changed from 'changed1' to 'op1', updating mapping
+<OProxy [DEBUG:_refresh]> Loading nested OP 'op2' from '/project1/myProject/op2'
+ Loading nested OP 'op3' from '/project1/myProject/op3'
+<OProxy [TEST:info]> 
 checking if name was changed
 
  
@@ -194,7 +207,7 @@ Here's storage
         "items": {
             "children": {},
             "ops": {
-                "changed1": {
+                "op1": {
                     "op": {
                         "name": "op1",
                         "type": "moviefileinTOP",
@@ -207,6 +220,91 @@ Here's storage
                         "name": "op2",
                         "type": "moviefileinTOP",
                         "path": "/project1/myProject/op2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}
+<OProxy [INFO]> Checking if storage matches expected after refresh -------> TEST PASSED
+<OProxy [TEST:info]> 
+Now going to rename "op1" --> "changed1" and "op2" --> "changed2" but only call refresh on "op1" to make sure only one name change is detected
+
+ 
+Here is storage
+
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "changed2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {}
+}
+<OProxy [TEST:info]> 
+Running _refresh() on "op1"
+
+ 
+Here is storage
+
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "op1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "changed2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed2"
                     },
                     "extensions": {}
                 },
