@@ -397,7 +397,7 @@ class OPLeaf(OPBaseWrapper):
         branch = self._get_storage_branch(keys)
         serialized = utils.make_serializable(branch)
         output = json.dumps(serialized, indent=4)
-        Log(f"Storage branch for {self.path or 'root'}: {output}", status='debug', process='_storage')
+        Log(f"Storage branch for leaf '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
         return output
 
 
@@ -544,7 +544,7 @@ class OProxyExtension(OPBaseWrapper):
         branch = self._get_storage_branch(keys)
         serialized = utils.make_serializable(branch)
         output = json.dumps(serialized, indent=4)
-        Log(f"Storage branch for extension {getattr(self, '_extension_name', 'unknown')}: {output}", status='debug', process='_storage')
+        Log(f"Storage branch for extension '{getattr(self, '_extension_name', 'unknown')}'\n\"{getattr(self, '_extension_name', 'unknown')}\" : {output}", status='info', process='_storage')
         return output
 
 
@@ -1297,5 +1297,5 @@ class OPContainer(OPBaseWrapper):
         branch = self._get_storage_branch(keys)
         serialized = utils.make_serializable(branch)
         output = json.dumps(serialized, indent=4)
-        Log(f"Storage branch for {self.path or 'root'}: {output}", status='debug', process='_storage')
+        Log(f"Storage branch for container '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
         return output
