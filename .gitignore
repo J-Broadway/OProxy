@@ -9,3 +9,6 @@ oproxy.*.toe
 Backup/
 .cursor/
 __pycache__/
+
+# Ignore log files
+dev/OPLogger/OProxy.log

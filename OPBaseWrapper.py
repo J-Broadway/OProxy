@@ -805,10 +805,8 @@ class OPContainer(OPBaseWrapper):
         # Build the complete nested storage structure
         children_data = self.__build_storage_structure()
 
-        # Clear existing children and update with new data
-        # This modifies the existing dictionary object rather than replacing it
-        self.OProxies['children'].clear()
-        self.OProxies['children'].update(children_data)
+        # Replace children structure using setItem for proper dependency handling
+        self.OProxies.setItem('children', children_data)
 
         Log(f"Saved {len(children_data)} top-level containers to storage", status='debug', process='_update_storage')
 
@@ -830,11 +828,11 @@ class OPContainer(OPBaseWrapper):
             # Rebuild this container's complete storage structure
             container_data = self.__build_storage_structure()
 
-            # For root container, replace entire children structure
-            self.OProxies['children'] = container_data
+            # For root container, replace entire children structure using setItem for proper dependency handling
+            self.OProxies.setItem('children', container_data)
 
-            # Update root extensions
-            self.OProxies['extensions'] = {name: ext._metadata for name, ext in self._extensions.items()}
+            # Update root extensions using setItem for proper dependency handling
+            self.OProxies.setItem('extensions', {name: ext._metadata for name, ext in self._extensions.items()})
 
             self._updating_storage = False
 
