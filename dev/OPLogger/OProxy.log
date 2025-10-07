@@ -1,8 +1,10 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: []
+<OProxy [DEBUG:_clear]> Clearing root extensions: ['testing']
+<OProxy [INFO:_remove]> Extension 'testing' removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'testing'
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 0 containers
+ Clearing in-memory hierarchy with 1 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:info]> 
@@ -280,6 +282,7 @@ Here is storage before refresh
     },
     "extensions": {}
 }
+<OProxy [INFO]> Checking if storage matches expected before refresh -------> TEST PASSED
 <OProxy [TEST:info]> 
 Running _refresh() on "op1"
 
@@ -322,4 +325,72 @@ Here is storage after refresh
         }
     },
     "extensions": {}
+}
+<OProxy [INFO]> Checking if storage matches expected after refresh -------> TEST PASSED
+<OProxy [TEST:info]> 
+Now going to test adding an extension then renaming it and calling _refresh on the extension
+
+<OProxy [INFO:_extend]> Extension 'testing' added to container 'root'
+<OProxy [TEST:info]> 
+Here is storage before refresh
+
+ 
+Now changing name of "rename_extensions_for_tests" to "renamed_extension"
+
+ 
+Now going to refresh the extension
+
+<OProxy [DEBUG:_refresh]> Using stored DAT object for extension 'testing' (path may have changed)
+<OProxy [INFO:_refresh]> Extension 'testing' source DAT path changed from '/project1/myProject/rename_extensions_for_tests' to '/project1/myProject/renamed_extension'
+<OProxy [TEST:info]> 
+Here is storage after refresh
+
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {
+        "items": {
+            "children": {},
+            "ops": {
+                "changed1": {
+                    "op": {
+                        "name": "changed1",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed1"
+                    },
+                    "extensions": {}
+                },
+                "op2": {
+                    "op": {
+                        "name": "changed2",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/changed2"
+                    },
+                    "extensions": {}
+                },
+                "op3": {
+                    "op": {
+                        "name": "op3",
+                        "type": "moviefileinTOP",
+                        "path": "/project1/myProject/op3"
+                    },
+                    "extensions": {}
+                }
+            },
+            "extensions": {}
+        }
+    },
+    "extensions": {
+        "testing": {
+            "cls": null,
+            "func": "hello",
+            "dat_op": {
+                "name": "renamed_extension",
+                "type": "textDAT",
+                "path": "/project1/myProject/renamed_extension"
+            },
+            "args": null,
+            "call": false,
+            "created_at": 1759805679.1374385
+        }
+    }
 }

@@ -17,6 +17,9 @@ def init():
 		
 	if t := op('changed3'):
 		t.name = 'op3'
+	
+	if t := op('renamed_extension'):
+		t.name = 'rename_extensions_for_tests'
 
 def info(msg):
 	log(f'\n{msg}\n', status='test', process='info')
@@ -27,12 +30,42 @@ def hault():
 def done(test):
 	log(f"\n============={test.upper()} TESTS COMPLETED=============\n")
 
+def remove_created_at(storage):
+	"""Remove created_at from storage for comparison"""
+	if isinstance(storage, str):
+		try:
+			import json
+			storage_dict = json.loads(storage)
+			remove_created_at(storage_dict)  # Recurse on the dict
+			return json.dumps(storage_dict, indent=4)
+		except json.JSONDecodeError:
+			return storage  # If not valid JSON, return as is
+
+	if isinstance(storage, dict):
+		# Remove created_at key if it exists
+		storage.pop('created_at', None)
+
+		# Recursively process all values in the dictionary
+		for key, value in storage.items():
+			if isinstance(value, (dict, list)):
+				remove_created_at(value)
+
+	elif isinstance(storage, list):
+		# Process each item in the list
+		for item in storage:
+			if isinstance(item, (dict, list)):
+				remove_created_at(item)
+
+	return storage
 def testCheck(expected, test_name, msg):
 	"""Initially written for _refresh() tests"""
-	if expected == True:
-		log(f"{msg} -------> TEST PASSED")
-	else:
-		raise Exception(log(f"{msg} -------> {test_name.capitalize()} TEST FAILED"))
+	if test_name == 'storage':
+		if expected == True:
+			log(f"{msg} -------> TEST PASSED")
+		else:
+			raise Exception(log(f"{msg} -------> {test_name.capitalize()} TEST FAILED"))
+	if test_name == 'extension_storage':
+		pass
 
 def passed(test_or_expected, test_name, msg):
 	if test_name == '_storage() test 1':
