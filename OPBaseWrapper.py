@@ -1162,7 +1162,7 @@ class OPContainer(OPBaseWrapper):
 
         return added_count
 
-    def _add(self, name, op=None):
+    def _add(self, name, op=None, returnObj=False):
         '''
         Add OPs to a container. Creates new container if it doesn't exist, or adds to existing container.
 
@@ -1184,6 +1184,7 @@ class OPContainer(OPBaseWrapper):
         Parameters:
         - name: Container name (string)
         - op: Single OP or list of OPs to add
+        - returnObj (bool): If True, returns the added/created container; otherwise returns self for chaining. Defaults to False.
 
         Behavior:
         - If container doesn't exist: Creates new container with provided OPs
@@ -1206,14 +1207,16 @@ class OPContainer(OPBaseWrapper):
                 if isinstance(existing, OPContainer):
                     Log(f"'{name}' OPContainer already exists - adding to existing container", status='info', process='_add')
                     self._add_insert(existing, op)
+                    obj = existing
                 else:
                     raise ValueError(f"Cannot add container '{name}' - already exists as OP in '{self.path or 'root'}'")
             else:
                 # Create new container
-                self._add_init(name, op)
+                obj = self._add_init(name, op)
         except Exception as e:
             Log(f"_add operation failed: {e}", status='error', process='_add')
             raise
+        return obj if returnObj else self
 
     def _remove(self, name=None):
         """

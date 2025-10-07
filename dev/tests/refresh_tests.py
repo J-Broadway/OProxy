@@ -340,5 +340,5 @@ current_storage = tf.remove_created_at(opr._storage(as_dict=True))
 print(tf.remove_created_at(opr._storage(as_dict=True)))
 expected = {'children': {}, 'extensions': {'myFunc': {'metadata': {'cls': None, 'func': 'myFunc', 'dat_op': {'name': 'refresh_tests', 'type': 'textDAT', 'path': '/project1/myProject/refresh_tests'}, 'args': None, 'call': False}, 'extensions': {}}, 'inlineClass': {'metadata': {'cls': 'inlineClass', 'func': None, 'dat_op': {'name': 'refresh_tests', 'type': 'textDAT', 'path': '/project1/myProject/refresh_tests'}, 'args': None, 'call': False}, 'extensions': {}}}}
 tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after extension classes in the same DAT')
-
+tf.init()
 tf.done('_refresh')
