@@ -52,12 +52,12 @@ class OPBaseWrapper(ABC):
         pass
 
     @abstractmethod
-    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
         """
         Extend the proxy object with an attribute or method from a Text DAT.
 
         Parameters:
-        - attr_name (str): Name for the extension
+        - attr_name (str): Name for the extension (defaults to func or cls name if not provided)
         - cls (str): Class name to extract from DAT
         - func (str): Function name to extract from DAT
         - dat (DAT): Text DAT containing the extension (required)
@@ -356,7 +356,7 @@ class OPLeaf(OPBaseWrapper):
     def __repr__(self):
         return repr(self._op)
 
-    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
         """
         Extend the leaf with an attribute or method from a Text DAT.
 
@@ -370,6 +370,10 @@ class OPLeaf(OPBaseWrapper):
                 raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
             if not dat:
                 raise ValueError("'dat' parameter is required for extensions")
+
+            # Auto-default attr_name to func or cls name if not provided
+            if attr_name is None:
+                attr_name = func or cls
 
             # Import AST extraction module
             mod_ast = mod('mod_AST')
@@ -653,7 +657,7 @@ class OProxyExtension(OPBaseWrapper):
         # Extensions currently cannot have extensions attached
         pass
 
-    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
         """Extensions cannot extend themselves."""
         raise NotImplementedError("Extensions cannot be extended")
 
@@ -1394,7 +1398,7 @@ class OPContainer(OPBaseWrapper):
 
             parent_container._children[container_name] = container
 
-    def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
         """
         Extend the container with an attribute or method from a Text DAT.
 
@@ -1407,6 +1411,10 @@ class OPContainer(OPBaseWrapper):
             raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
         if not dat:
             raise ValueError("'dat' parameter is required for extensions")
+
+        # Auto-default attr_name to func or cls name if not provided
+        if attr_name is None:
+            attr_name = func or cls
 
         try:
             # Import AST extraction module
