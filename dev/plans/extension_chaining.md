@@ -109,6 +109,12 @@ All extension methods return `self` for consistent chaining:
 - Implement `_extend()` method (remove `NotImplementedError`)
 - Update `_refresh_extensions()` to handle nested extensions
 
+### 4. Method Conflict Resolution
+
+- Raise AttributeError on name conflicts in nested extensions.
+
+- Suggest using monkey_patch=True to overwrite (not yet implemented, planned for future).
+
 ## Implementation Phases
 
 ### Phase 1: Storage Migration
@@ -118,9 +124,12 @@ All extension methods return `self` for consistent chaining:
 
 ### Phase 2: OProxyExtension Refactor
 1. **Initialize `_extensions`** in `OProxyExtension.__init__()`
-2. **Implement `_extend()`** method in `OProxyExtension`
-3. **Update `_refresh_extensions()`** for recursive extension loading
-4. **Update `_remove()`** to handle nested extension cleanup
+
+1. **Initialize `self.parent`** reference in `OProxyExtension.__init__()` for hierarchy traversal.
+
+2. **Implement `_extend()`** method in `OProxyExtension` with circular dependency checks, depth limits (default max_depth=10), and raise if exceeded.
+3. **Update `_refresh_extensions()`** for recursive extension loading: Traverse nested 'extensions' dicts, load each level recursively.
+4. **Update `_remove()`** to handle nested extension cleanup: Recursively remove child extensions before removing self, clean storage cascade.
 
 ### Phase 3: Path Navigation Updates
 1. **Update `_get_storage_branch()`** to handle extension paths like `container.extensions.ext1.extensions.ext2`
@@ -130,13 +139,6 @@ All extension methods return `self` for consistent chaining:
 ### Phase 4: Method Chaining Consistency
 1. **Fix OPContainer._extend()** to return `self` instead of `extension`
 2. **Verify OProxyExtension._extend()** returns `self`
-3. **Consider `_add()` chaining** (return `self` for consistency)
-
-### Phase 5: Testing & Validation
-1. **Create test cases** for extension chaining
-2. **Test nested extension hierarchies** (3+ levels deep)
-3. **Validate storage persistence** across project reloads
-4. **Test extension removal** with nested structures
 
 ## API Examples (After Implementation)
 
@@ -173,10 +175,7 @@ opr.containers.Helper._extend(func='validate', dat=me)
 ## Migration Strategy
 
 ### Storage Migration
-- Detect old flat extension format during `_migrate_storage_format()`
-- Convert flat extensions to hierarchical structure
-- Preserve all existing extension metadata
-- Maintain backwards compatibility for extension access
+- No migration strategy since current dev is the only dev using OPRoxy
 
 ### API Compatibility
 - Existing code continues to work unchanged
@@ -195,8 +194,11 @@ opr.containers.Helper._extend(func='validate', dat=me)
 
 1. **Storage Complexity**: More complex nested storage structure
 2. **Path Resolution**: More complex path navigation for deep nesting
-3. **Performance**: Potential performance impact with deep extension hierarchies
-4. **Debugging**: More complex debugging with nested extension structures
+3. **Debugging**: More complex debugging with nested extension structures
+
+5. **Circular Dependencies**: Detect and prevent circular extension chains (e.g., A extends B extends A) to avoid infinite recursion.
+
+6. **Depth Limits**: Implement maximum nesting depth to prevent stack overflows in deep hierarchies.
 
 ## Success Criteria
 
@@ -206,3 +208,17 @@ opr.containers.Helper._extend(func='validate', dat=me)
 - ✅ Existing code continues to work
 - ✅ Extension removal cleans up nested structures
 - ✅ Path resolution works for deeply nested extensions
+
+## Future Enhancements
+
+1. **Dynamic Access Patterns** (Implement later)
+
+   - Add get_extension(path: str) for runtime dot-path access (e.g., opr.get_extension('Logger.Formatter').method()).
+
+   - Add find_extensions_by_cls(cls_name: str, recursive=True) for querying nested matches.
+
+   - Include placeholder methods in relevant classes (e.g., OProxyExtension) with docstrings explaining future implementation intent.
+
+## Docs
+
+Update _extend_docs.md with nesting guidelines after implementation.
