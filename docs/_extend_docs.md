@@ -190,3 +190,22 @@ The extension system provides detailed error messages for common issues:
 - `call=False` (default): Returns the container, maintains backward compatibility
 - `call=True`: Returns the callable extension for flexible usage patterns
 - Optional 'self' parameter: Supports both bound and unbound function patterns
+
+## Monkey-Patching Existing Containers/Leaves
+
+Use `monkey_patch=True` with `cls` and `dat` to replace an existing container or leaf with a custom subclass, preserving state.
+
+**Parameters for monkey_patch=True:**
+- Only `attr_name`, `cls`, `dat` supported
+- `func`, `args`, `call` not allowed
+
+**Example:**
+opr._add('items', ['op1', 'op2'])  # Create container
+opr._extend('items', cls='CustomContainer', dat='monkey_patches', monkey_patch=True)  # Replace with subclass
+
+**Leaf Example:**
+opr.items._extend('op1', cls='CustomLeaf', dat='monkey_patches', monkey_patch=True)
+
+Extensions cannot be monkey-patched; remove and re-extend instead.
+
+See extend_monkey_patch.md for advanced usage and examples.

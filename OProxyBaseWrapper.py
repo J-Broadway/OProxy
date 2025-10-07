@@ -1749,6 +1749,61 @@ class OProxyContainer(OProxyBaseWrapper):
         if keyword.iskeyword(attr_name):
             raise ValueError(f"attr_name '{attr_name}' is a Python keyword and cannot be used")
 
+        if monkey_patch:
+            if func is not None:
+                raise NotImplementedError("'func' not supported when monkey_patch=True")
+            if args is not None:
+                raise NotImplementedError("'args' not supported when monkey_patch=True")
+            if call:
+                raise NotImplementedError("'call' not supported when monkey_patch=True")
+            if cls is None:
+                raise ValueError("'cls' is required when monkey_patch=True")
+            if attr_name in self._extensions:
+                raise NotImplementedError("Monkey-patching extensions not supported; remove and re-extend instead.")
+            if attr_name not in self._children:
+                raise ValueError(f"Cannot monkey-patch '{attr_name}': not found in children")
+            existing = self._children[attr_name]
+            if not isinstance(existing, (OProxyContainer, OProxyLeaf)):
+                raise TypeError(f"Cannot monkey-patch type '{type(existing).__name__}'")
+
+            mod_ast = mod('mod_AST')
+            try:
+                extracted_cls = mod_ast.Main(cls=cls, func=None, op=dat, log=Log)
+            except Exception as e:
+                raise RuntimeError(f"Failed to extract class '{cls}' from DAT {dat.path}: {e}") from e
+            if not isinstance(extracted_cls, type):
+                raise TypeError(f"Extracted '{cls}' is not a class")
+
+            if isinstance(existing, OProxyContainer):
+                if not issubclass(extracted_cls, OProxyContainer):
+                    raise TypeError(f"Class '{cls}' must subclass OProxyContainer")
+                new_instance = extracted_cls(path=existing._path, parent=existing._parent, ops=None, root=existing._is_root)
+                new_instance._ownerComp = existing._ownerComp
+                new_instance._children = existing._children
+                for child in new_instance._children.values():
+                    child._parent = new_instance
+                new_instance._extensions = existing._extensions
+                for ext in new_instance._extensions.values():
+                    ext._parent = new_instance
+                self._children[attr_name] = new_instance
+            elif isinstance(existing, OProxyLeaf):
+                if not issubclass(extracted_cls, OProxyLeaf):
+                    raise TypeError(f"Class '{cls}' must subclass OProxyLeaf")
+                new_instance = extracted_cls(op=existing._op, path=existing._path, parent=existing._parent)
+                new_instance._extensions = existing._extensions
+                for ext in new_instance._extensions.values():
+                    ext._parent = new_instance
+                self._children[attr_name] = new_instance
+
+            root = self._find_root()
+            if hasattr(root, 'OProxies'):
+                root._update_storage()
+            Log(f"Monkey-patched '{attr_name}' with '{cls}'", status='info', process='_extend')
+            if returnObj:
+                return new_instance
+            else:
+                return self
+
         try:
             # Import AST extraction module
             mod_ast = mod('mod_AST')
@@ -1762,9 +1817,10 @@ class OProxyContainer(OProxyBaseWrapper):
             # Check for naming conflicts
             if hasattr(self, attr_name) and not monkey_patch:
                 existing_attr = getattr(self, attr_name)
+                if isinstance(existing_attr, (OProxyContainer, OProxyLeaf)):
+                    raise ValueError(f"Name '{attr_name}' conflicts with existing container/leaf. Use monkey_patch=True to replace.")
                 if not isinstance(existing_attr, OProxyExtension):
-                    raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
-                                   f"To overwrite, use monkey_patch=True.")
+                    raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. To overwrite, use monkey_patch=True.")
 
             # Extract the actual object
             try:
