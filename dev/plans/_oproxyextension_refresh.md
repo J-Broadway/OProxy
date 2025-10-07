@@ -116,7 +116,7 @@ def _refresh_source_dat(self):
         )
 
         # Update the extension's internal object
-        self._obj = actual_obj
+        self._actual = actual_obj
 
         # Update storage if path changed
         if changed and self._parent:
