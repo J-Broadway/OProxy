@@ -6,6 +6,7 @@ import time
 import traceback
 import inspect
 import json
+import keyword
 from utils import td_isinstance
 
 ''' LLM Notes:
@@ -704,6 +705,19 @@ class OPContainer(OPBaseWrapper):
 
     def _validate_child_name(self, container, name):
         """Validate that a name can be used as a child in the given container"""
+
+        # Validate Python identifier rules
+        if not isinstance(name, str):
+            raise ValueError(f"Name must be a string, got {type(name).__name__}")
+        if not name:
+            raise ValueError("Name cannot be empty")
+        if not name.isidentifier():
+            raise ValueError(f"Name '{name}' is not a valid Python identifier. "
+                           f"Names must contain only letters, digits, and underscores, "
+                           f"cannot start with a digit, and cannot contain spaces or special characters. "
+                           f"Use underscores instead of spaces (e.g., 'my_container' instead of 'my container').")
+        if keyword.iskeyword(name):
+            raise ValueError(f"Name '{name}' is a Python keyword and cannot be used")
 
         # Reserved names that cannot be used as child names
         reserved_names = {
@@ -1415,6 +1429,19 @@ class OPContainer(OPBaseWrapper):
         # Auto-default attr_name to func or cls name if not provided
         if attr_name is None:
             attr_name = func or cls
+
+        # Validate attr_name as Python identifier
+        if not isinstance(attr_name, str):
+            raise ValueError(f"attr_name must be a string, got {type(attr_name).__name__}")
+        if not attr_name:
+            raise ValueError("attr_name cannot be empty")
+        if not attr_name.isidentifier():
+            raise ValueError(f"attr_name '{attr_name}' is not a valid Python identifier. "
+                           f"Names must contain only letters, digits, and underscores, "
+                           f"cannot start with a digit, and cannot contain spaces or special characters. "
+                           f"Use underscores instead of spaces (e.g., 'my_extension' instead of 'my extension').")
+        if keyword.iskeyword(attr_name):
+            raise ValueError(f"attr_name '{attr_name}' is a Python keyword and cannot be used")
 
         try:
             # Import AST extraction module

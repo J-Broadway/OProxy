@@ -136,6 +136,84 @@ expected = {
 
 tf.passed(expected, 'storage', 'Checking if nested storage matches expected')
 
+# Validation tests
+tf.info('Begin testing name validation')
+
+# Test invalid container names
+invalid_names = [
+    'test space',      # space
+    'test-space',      # hyphen
+    'test.space',      # dot
+    '123test',         # starts with digit
+    'test@name',       # special character
+    'class',           # Python keyword
+    'def',             # Python keyword
+    '',                # empty string
+    'test name',       # multiple spaces
+    'for',             # Python keyword
+    'if',              # Python keyword
+]
+
+for invalid_name in invalid_names:
+    try:
+        opr._add(invalid_name, mvs)
+        log(f"ERROR: Should have failed for invalid name '{invalid_name}'", status='error', process='validation_test')
+        raise Exception(f"Validation failed - allowed invalid name '{invalid_name}'")
+    except ValueError as e:
+        log(f"SUCCESS: Correctly rejected invalid name '{invalid_name}': {e}", status='test', process='validation_test')
+    except Exception as e:
+        log(f"UNEXPECTED ERROR for '{invalid_name}': {e}", status='error', process='validation_test')
+        raise
+
+# Test valid container names
+valid_names = [
+    'test_container',
+    'TestContainer',
+    'test123',
+    '_private',
+    'a',
+    'my_long_container_name_with_underscores'
+]
+
+for valid_name in valid_names:
+    try:
+        # Clean up any existing container first
+        if valid_name in opr._children:
+            opr._remove(valid_name)
+
+        opr._add(valid_name, ['op1'])
+        log(f"SUCCESS: Correctly accepted valid name '{valid_name}'", status='test', process='validation_test')
+
+        # Clean up
+        opr._remove(valid_name)
+    except Exception as e:
+        log(f"ERROR: Failed to accept valid name '{valid_name}': {e}", status='error', process='validation_test')
+        raise
+
+# Test invalid extension names
+invalid_ext_names = [
+    'test space',
+    'test-space',
+    '123test',
+    'class',
+    'def',
+    'for',
+    ''
+]
+
+for invalid_name in invalid_ext_names:
+    try:
+        opr._extend(invalid_name, func='hello', dat='extensions_for_tests')
+        log(f"ERROR: Should have failed for invalid extension name '{invalid_name}'", status='error', process='validation_test')
+        raise Exception(f"Validation failed - allowed invalid extension name '{invalid_name}'")
+    except ValueError as e:
+        log(f"SUCCESS: Correctly rejected invalid extension name '{invalid_name}': {e}", status='test', process='validation_test')
+    except Exception as e:
+        log(f"UNEXPECTED ERROR for extension '{invalid_name}': {e}", status='error', process='validation_test')
+        raise
+
+tf.info('Name validation tests completed')
+
 tf.info('Begin testing _remove() functionality')
 
 tf.current_storage('Current storage before _remove')
