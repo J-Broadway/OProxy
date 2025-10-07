@@ -441,15 +441,26 @@ class OPLeaf(OPBaseWrapper):
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
 
-    def _storage(self, keys=None):
+    def _storage(self, keys=None, as_dict=False):
         """
         Public method to view serialized storage branch. Intended for public usage, not internal; use _store() for serialization.
+
+        Args:
+            keys: Optional keys to filter the returned data
+            as_dict: If True, return dictionary object instead of JSON string
+
+        Returns:
+            Dictionary object if as_dict=True, JSON string otherwise
         """
         branch = self._get_storage_branch(keys)
         serialized = utils.make_serializable(branch)
-        output = json.dumps(serialized, indent=4)
-        Log(f"Storage branch for leaf '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
-        return output
+        if as_dict:
+            Log(f"Storage branch for leaf '{self.path or 'root'}' returned as dictionary", status='info', process='_storage')
+            return serialized
+        else:
+            output = json.dumps(serialized, indent=4)
+            Log(f"Storage branch for leaf '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
+            return output
 
 
 class OProxyExtension(OPBaseWrapper):
@@ -646,15 +657,26 @@ class OProxyExtension(OPBaseWrapper):
         """Extensions cannot extend themselves."""
         raise NotImplementedError("Extensions cannot be extended")
 
-    def _storage(self, keys=None):
+    def _storage(self, keys=None, as_dict=False):
         """
         Public method to view serialized storage branch. Intended for public usage, not internal; use _store() for serialization.
+
+        Args:
+            keys: Optional keys to filter the returned data
+            as_dict: If True, return dictionary object instead of JSON string
+
+        Returns:
+            Dictionary object if as_dict=True, JSON string otherwise
         """
         branch = self._get_storage_branch(keys)
         serialized = utils.make_serializable(branch)
-        output = json.dumps(serialized, indent=4)
-        Log(f"Storage branch for extension '{getattr(self, '_extension_name', 'unknown')}'\n\"{getattr(self, '_extension_name', 'unknown')}\" : {output}", status='info', process='_storage')
-        return output
+        if as_dict:
+            Log(f"Storage branch for extension '{getattr(self, '_extension_name', 'unknown')}' returned as dictionary", status='info', process='_storage')
+            return serialized
+        else:
+            output = json.dumps(serialized, indent=4)
+            Log(f"Storage branch for extension '{getattr(self, '_extension_name', 'unknown')}'\n\"{getattr(self, '_extension_name', 'unknown')}\" : {output}", status='info', process='_storage')
+            return output
 
 
 class OPContainer(OPBaseWrapper):
@@ -1470,12 +1492,23 @@ class OPContainer(OPBaseWrapper):
             raise
         return extension
 
-    def _storage(self, keys=None):
+    def _storage(self, keys=None, as_dict=False):
         """
         Public method to view serialized storage branch. Intended for public usage, not internal; use _store() for serialization.
+
+        Args:
+            keys: Optional keys to filter the returned data
+            as_dict: If True, return dictionary object instead of JSON string
+
+        Returns:
+            Dictionary object if as_dict=True, JSON string otherwise
         """
         branch = self._get_storage_branch(keys)
         serialized = utils.make_serializable(branch)
-        output = json.dumps(serialized, indent=4)
-        Log(f"Storage branch for container '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
-        return output
+        if as_dict:
+            Log(f"Storage branch for container '{self.path or 'root'}' returned as dictionary", status='info', process='_storage')
+            return serialized
+        else:
+            output = json.dumps(serialized, indent=4)
+            Log(f"Storage branch for container '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
+            return output
