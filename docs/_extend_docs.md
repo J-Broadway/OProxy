@@ -7,14 +7,11 @@ The `_extend` method allows you to dynamically add functions, classes, or other 
 ## Basic Usage
 
 ```python
-# Add a function to a container
-container._extend('my_function', func='myFunctionName', dat='my_dat')
+# Add a function to a container and chain
+container._extend('my_function', func='myFunctionName', dat='my_dat')._extend('another', ...)
 
-# Call the extended function
-container.my_function(arg1, arg2)
-
-# Or use the returned extension directly
-func = container._extend('my_func', func='myFunctionName', dat='my_dat')
+# Get the extension object directly
+func = container._extend('my_func', func='myFunctionName', dat='my_dat', returnObj=True)
 result = func(arg1, arg2)
 ```
 
@@ -27,6 +24,7 @@ result = func(arg1, arg2)
 - `args` (list or tuple, optional): Arguments for initial call when `call=True`
 - `call` (bool, optional): Whether to execute immediately and return callable
 - `monkey_patch` (bool, optional): Allow overwriting existing attributes
+- `returnObj` (bool, optional): If True, returns the extension object instead of self (for chaining). Defaults to False.
 
 ## Key Features
 

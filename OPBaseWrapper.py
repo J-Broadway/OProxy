@@ -53,7 +53,7 @@ class OPBaseWrapper(ABC):
         pass
 
     @abstractmethod
-    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False, returnObj=False):
         """
         Extend the proxy object with an attribute or method from a Text DAT.
 
@@ -66,7 +66,8 @@ class OPBaseWrapper(ABC):
         - monkey_patch (bool): Allow overwriting existing attributes
 
         Returns:
-        - Extension object: The created extension for direct use
+        - self by default for chaining
+        - The created extension object if returnObj=True
 
         Raises:
         - ValueError: Invalid parameters, naming conflicts, extraction failures
@@ -357,7 +358,7 @@ class OPLeaf(OPBaseWrapper):
     def __repr__(self):
         return repr(self._op)
 
-    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False, returnObj=False):
         """
         Extend the leaf with an attribute or method from a Text DAT.
 
@@ -441,7 +442,10 @@ class OPLeaf(OPBaseWrapper):
                 root._update_storage()
 
             Log(f"Extension '{attr_name}' added to leaf '{self.path}'", status='info', process='_extend')
-            return self
+            if returnObj:
+                return extension
+            else:
+                return self
         except Exception as e:
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
@@ -803,7 +807,7 @@ class OProxyExtension(OPBaseWrapper):
         full_path = container_path + path_parts
         return full_path if full_path else None
 
-    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False, max_depth=10):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False, max_depth=10, returnObj=False):
         """
         Extend this extension with an attribute or method from a Text DAT.
 
@@ -914,7 +918,10 @@ class OProxyExtension(OPBaseWrapper):
                 root._update_storage()
 
             Log(f"Extension '{attr_name}' added to extension '{getattr(self, '_extension_name', 'unknown')}'", status='info', process='_extend')
-            return self
+            if returnObj:
+                return extension
+            else:
+                return self
         except Exception as e:
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
@@ -1708,7 +1715,7 @@ class OPContainer(OPBaseWrapper):
 
             parent_container._children[container_name] = container
 
-    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False, returnObj=False):
         """
         Extend the container with an attribute or method from a Text DAT.
 
@@ -1818,6 +1825,10 @@ class OPContainer(OPBaseWrapper):
                 root._update_storage()
 
             Log(f"Extension '{attr_name}' added to container '{self.path or 'root'}'", status='info', process='_extend')
+            if returnObj:
+                return extension
+            else:
+                return self
         except Exception as e:
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
