@@ -1,4 +1,5 @@
 import test_functions as tf
+tf.init()
 opr = parent.src.OProxy
 log = tf.log 
 

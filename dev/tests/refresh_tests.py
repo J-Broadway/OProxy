@@ -285,12 +285,17 @@ tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matche
 tf.info('Now going to test adding an extension then renaming it and calling _refresh on the extension')
 opr._extend('testing', func='hello', dat='rename_extensions_for_tests')
 tf.info('Here is storage before refresh')
+current_storage = tf.remove_created_at(opr._storage(as_dict=True))
+expected = {'children': {'items': {'children': {}, 'ops': {'changed1': {'op': {'name': 'changed1', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed1'}, 'extensions': {}}, 'op2': {'op': {'name': 'changed2', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed2'}, 'extensions': {}}, 'op3': {'op': {'name': 'op3', 'type': 'moviefileinTOP', 'path': '/project1/myProject/op3'}, 'extensions': {}}}, 'extensions': {}}}, 'extensions': {'testing': {'cls': None, 'func': 'hello', 'dat_op': {'name': 'rename_extensions_for_tests', 'type': 'textDAT', 'path': '/project1/myProject/rename_extensions_for_tests'}, 'args': None, 'call': False}}}
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected before extension refresh name test')
 tf.info('Now changing name of "rename_extensions_for_tests" to "renamed_extension"')
 op('rename_extensions_for_tests').name = 'renamed_extension'
 tf.info('Now going to refresh the extension')
 opr.testing._refresh()
 tf.info('Here is storage after refresh')
 opr._storage()
+current_storage = tf.remove_created_at(opr._storage(as_dict=True))
+expected = {'children': {'items': {'children': {}, 'ops': {'changed1': {'op': {'name': 'changed1', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed1'}, 'extensions': {}}, 'op2': {'op': {'name': 'changed2', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed2'}, 'extensions': {}}, 'op3': {'op': {'name': 'op3', 'type': 'moviefileinTOP', 'path': '/project1/myProject/op3'}, 'extensions': {}}}, 'extensions': {}}}, 'extensions': {'testing': {'cls': None, 'func': 'hello', 'dat_op': {'name': 'renamed_extension', 'type': 'textDAT', 'path': '/project1/myProject/renamed_extension'}, 'args': None, 'call': False}}}
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after extension refresh for new extension rename')
 
-
-#tf.done('_refresh')
+tf.done('_refresh')

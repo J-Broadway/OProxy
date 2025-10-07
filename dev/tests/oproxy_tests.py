@@ -17,6 +17,7 @@ if t := op('changed3'):
 	t.name = 'op3'
 	
 # Clear storage first
+tf.init()
 opr._clear()
 mvs = ['op1','op2','op3']
 

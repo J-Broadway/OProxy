@@ -1,10 +1,8 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: ['testing']
-<OProxy [INFO:_remove]> Extension 'testing' removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'testing'
+<OProxy [DEBUG:_clear]> Clearing root extensions: []
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:info]> 
@@ -334,7 +332,9 @@ Now going to test adding an extension then renaming it and calling _refresh on t
 <OProxy [TEST:info]> 
 Here is storage before refresh
 
- 
+<OProxy [INFO:_storage]> Storage branch for container 'root' returned as dictionary
+<OProxy [INFO]> Checking if storage matches expected before extension refresh name test -------> TEST PASSED
+<OProxy [TEST:info]> 
 Now changing name of "rename_extensions_for_tests" to "renamed_extension"
 
  
@@ -390,7 +390,12 @@ Here is storage after refresh
             },
             "args": null,
             "call": false,
-            "created_at": 1759805679.1374385
+            "created_at": 1759806494.2209547
         }
     }
 }
+ Storage branch for container 'root' returned as dictionary
+<OProxy [INFO]> Checking if storage matches expected after extension refresh for new extension rename -------> TEST PASSED
+ 
+=============_REFRESH TESTS COMPLETED=============
+
