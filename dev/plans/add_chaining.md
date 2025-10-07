@@ -10,7 +10,7 @@ Enable chaining for _add() methods across OProxy classes to improve API fluency,
 
 ## Proposed Changes
 
-1. Update _add() in OPContainer to return self after addition (or the new container/leaf if returnObj=True).
+1. Update _add() in OProxyContainer to return self after addition (or the new container/leaf if returnObj=True).
 
 2. Ensure additions are properly stored and refreshed.
 

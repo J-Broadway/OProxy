@@ -60,7 +60,7 @@ tf.info(" calling 'opr.items.item2._extend('test', func='hello', dat='extensions
 opr.items.item2._extend('test', func='hello', dat='extensions_for_tests')
 tf.info('now showing storage for "item2" extension')
 opr.items.item2.test._storage()
-tf.info('now gonna try on an OPLeaf')
+tf.info('now gonna try on an OProxyLeaf')
 tf.info("calling 'opr.items('op1')._storage()'")
 opr.items('op1')._storage()
 

@@ -22,7 +22,7 @@ opr._clear()
 mvs = ['op1','op2','op3']
 
 # _add tests
-opr._add('items', mvs) # Create OPContainer Item
+opr._add('items', mvs) # Create OProxyContainer Item
 
 # Verify storage after add
 tf.current_storage('Line 61: Storage after _add')
@@ -386,10 +386,10 @@ expected = {
 tf.passed(expected, 'storage', 'Checking above test')
 tf.info('Add container and try to remove individual leaves like this opr.items("op1")._remove()')
 opr._add('items', mvs)
-tf.current_storage('Current storage after adding "items" container for OPLeaf testing')
+tf.current_storage('Current storage after adding "items" container for OProxyLeaf testing')
 opr.items('op1')._remove()
 opr.items('op2')._remove()
-tf.current_storage('Current storage after removing OPLeafs')
+tf.current_storage('Current storage after removing OProxyLeafs')
 expected = {
   "OProxies": {
     "children": {

@@ -1,10 +1,10 @@
 # oproxy.py - Root entry point for OProxy
 from TDStoreTools import StorageManager
-from OPBaseWrapper import OPContainer
+from OProxyBaseWrapper import OProxyContainer
 
 # Import utils module for logging functions
 utils = mod('utils')
-Log = parent.opr.Log
+Log = parent.opr.Log 
 
 '''
 NOTES FOR LLMs:
@@ -21,7 +21,7 @@ NOTES FOR LLMs:
 - If modifying collections inside, they may need to be wrapped as DependDict/List/Set for deep dependability.
 '''
 
-class root(OPContainer):
+class root(OProxyContainer):
     """Root OProxy container."""
 
     def __init__(self, ownerComp):

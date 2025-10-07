@@ -1,4 +1,4 @@
-# OPBaseWrapper.py - Composite Pattern for OProxy
+# OProxyBaseWrapper.py - Composite Pattern for OProxy
 from abc import ABC, abstractmethod
 import td
 import types
@@ -18,7 +18,7 @@ in comment vs codebase are found.
 utils = mod('utils')
 Log = parent.opr.Log # Use this instead of self.Log() <-- will return errors.
 
-class OPBaseWrapper(ABC):
+class OProxyBaseWrapper(ABC):
     """Abstract Component: Common interface for leaves and composites."""
 
     def __init__(self, path="", parent=None):
@@ -105,7 +105,7 @@ class OPBaseWrapper(ABC):
             raise RuntimeError("No storage found")
 
         if self._path == "":
-            if isinstance(self, OPContainer) and self.is_root:
+            if isinstance(self, OProxyContainer) and self.is_root:
                 branch = storage
             elif isinstance(self, OProxyExtension):
                 if not hasattr(self, '_extension_name'):
@@ -126,11 +126,11 @@ class OPBaseWrapper(ABC):
                     raise KeyError(segment)
                 branch = branch['children'][segment]
             last = path_segments[-1]
-            if isinstance(self, OPContainer):
+            if isinstance(self, OProxyContainer):
                 if last not in branch['children']:
                     raise KeyError(last)
                 branch = branch['children'][last]
-            elif isinstance(self, OPLeaf):
+            elif isinstance(self, OProxyLeaf):
                 if last not in branch['ops']:
                     raise KeyError(last)
                 branch = branch['ops'][last]
@@ -172,7 +172,7 @@ class OPBaseWrapper(ABC):
     def parent(self):
         return self._parent
 
-class OPLeaf(OPBaseWrapper):
+class OProxyLeaf(OProxyBaseWrapper):
     """Leaf: Proxies a single OP."""
 
     def __init__(self, op, path="", parent=None):
@@ -362,7 +362,7 @@ class OPLeaf(OPBaseWrapper):
         """
         Extend the leaf with an attribute or method from a Text DAT.
 
-        Leaf extensions are bound to the leaf instance (self refers to the OPLeaf).
+        Leaf extensions are bound to the leaf instance (self refers to the OProxyLeaf).
         """
         try:
             # Parameter validation
@@ -472,7 +472,7 @@ class OPLeaf(OPBaseWrapper):
             return output
 
 
-class OProxyExtension(OPBaseWrapper):
+class OProxyExtension(OProxyBaseWrapper):
     """
     Factory template for all OProxy extensions. Provides consistent interface,
     delegation to extracted objects, and metadata tracking.
@@ -987,12 +987,12 @@ class OProxyExtension(OPBaseWrapper):
             return output
 
 
-class OPContainer(OPBaseWrapper):
+class OProxyContainer(OProxyBaseWrapper):
     """Composite: Container for OPs or sub-containers."""
 
     def __init__(self, ownerComp=None, path="", parent=None, ops=None, root=False):
         super().__init__(path, parent)
-        self._children = {}  # name -> OPBaseWrapper (leaf or sub-container)
+        self._children = {}  # name -> OProxyBaseWrapper (leaf or sub-container)
         self._ownerComp = ownerComp  # Only root has this for storage
         self._is_root = root  # Explicit root flag to avoid recursion issues
         self._extensions = {}  # Extensions applied to this container
@@ -1049,10 +1049,10 @@ class OPContainer(OPBaseWrapper):
         # Check for conflicts with existing children types
         if name in container._children:
             existing_child = container._children[name]
-            if isinstance(existing_child, OPContainer):
+            if isinstance(existing_child, OProxyContainer):
                 # This is OK - we'll add to the existing container
                 pass
-            else:  # OPLeaf
+            else:  # OProxyLeaf
                 raise ValueError(f"Name '{name}' already exists as an OP in '{container.path or 'root'}'")
 
         return True
@@ -1086,14 +1086,14 @@ class OPContainer(OPBaseWrapper):
         # Create new container with proper path
         child_path = f"{self.path}.{name}" if self.path else name
         Log(f"Creating container with path '{child_path}'", status='debug', process='_add')
-        container = OPContainer(path=child_path, parent=self)
+        container = OProxyContainer(path=child_path, parent=self)
 
         # Add validated OPs as leaves to the container
         Log(f"Adding {len(validated_ops)} OPs as leaves to container '{name}'", status='debug', process='_add')
         for validated_op in validated_ops:
             leaf_path = f"{child_path}.{validated_op.name}"
             Log(f"Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'", status='debug', process='_add')
-            leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
+            leaf = OProxyLeaf(validated_op, path=leaf_path, parent=container)
             container._children[validated_op.name] = leaf
 
         # Add container to this container's children
@@ -1148,7 +1148,7 @@ class OPContainer(OPBaseWrapper):
             for validated_op in validated_ops:
                 leaf_path = f"{container.path}.{validated_op.name}" if container.path else validated_op.name
                 Log(f"Creating leaf for OP '{validated_op.name}' with path '{leaf_path}'", status='debug', process='_add')
-                leaf = OPLeaf(validated_op, path=leaf_path, parent=container)
+                leaf = OProxyLeaf(validated_op, path=leaf_path, parent=container)
                 container._children[validated_op.name] = leaf
 
             Log(f"Successfully added {added_count} OPs to container '{container.path or 'root'}'", status='info', process='_add')
@@ -1204,8 +1204,8 @@ class OPContainer(OPBaseWrapper):
             # Check if container already exists
             if name in self._children:
                 existing = self._children[name]
-                if isinstance(existing, OPContainer):
-                    Log(f"'{name}' OPContainer already exists - adding to existing container", status='info', process='_add')
+                if isinstance(existing, OProxyContainer):
+                    Log(f"'{name}' OProxyContainer already exists - adding to existing container", status='info', process='_add')
                     self._add_insert(existing, op)
                     obj = existing
                 else:
@@ -1299,22 +1299,22 @@ class OPContainer(OPBaseWrapper):
 
     def __setattr__(self, name, value):
         if name.startswith('_') or name in ('_children', '_ownerComp', 'OProxies') or isinstance(value, OProxyExtension):
-            object.__setattr__(self, name, value)  # Bypass OPBaseWrapper's restriction
+            object.__setattr__(self, name, value)  # Bypass OProxyBaseWrapper's restriction
         else:
             for child in self._children.values():
                 setattr(child, name, value)
 
     def __str__(self):
         op_names = [child._op.name for child in self._children.values() if hasattr(child, '_op')]
-        return f"OPContainer '{self.path or 'root'}' {op_names}"
+        return f"OProxyContainer '{self.path or 'root'}' {op_names}"
 
     def __repr__(self):
         return self.__str__()
 
     def __iter__(self):
-        """Iterate over the OPLeaf wrappers in this container."""
+        """Iterate over the OProxyLeaf wrappers in this container."""
         for child in self._children.values():
-            if hasattr(child, '_op'):  # It's an OPLeaf
+            if hasattr(child, '_op'):  # It's an OProxyLeaf
                 yield child
 
     def __len__(self):
@@ -1404,7 +1404,7 @@ class OPContainer(OPBaseWrapper):
         result = {}
 
         for name, child in self._children.items():
-            if isinstance(child, OPContainer):
+            if isinstance(child, OProxyContainer):
                 # Build structure for this container
                 container_data = {
                     'children': child._build_storage_structure(),  # Recursively build nested children
@@ -1414,7 +1414,7 @@ class OPContainer(OPBaseWrapper):
 
                 # Add OPs from this container
                 for op_name, op_child in child._children.items():
-                    if hasattr(op_child, '_op'):  # It's an OPLeaf
+                    if hasattr(op_child, '_op'):  # It's an OProxyLeaf
                         # Create OP object with path, raw OP, and extensions
                         op_data = {
                             'path': op_child._op.path,
@@ -1488,7 +1488,7 @@ class OPContainer(OPBaseWrapper):
 
             # Recursive refresh of children
             for child in self._children.values():
-                if isinstance(child, OPContainer):
+                if isinstance(child, OProxyContainer):
                     child._refresh()
 
             # Update storage
@@ -1550,7 +1550,7 @@ class OPContainer(OPBaseWrapper):
 
                 # Add with current name (which may be different from stored_key)
                 leaf_path = f"{self.path}.{current_name}"
-                leaf = OPLeaf(op, path=leaf_path, parent=self)
+                leaf = OProxyLeaf(op, path=leaf_path, parent=self)
 
                 # Load extensions onto the leaf
                 if op_extensions:
@@ -1660,7 +1660,7 @@ class OPContainer(OPBaseWrapper):
             Log(f"Loading nested container '{container_name}' under '{parent_path}'", status='debug', process='_refresh')
 
             container_path = f"{parent_path}.{container_name}"
-            container = OPContainer(path=container_path, parent=parent_container)
+            container = OProxyContainer(path=container_path, parent=parent_container)
 
             # Load OPs
             ops_data = container_data.get('ops', {})
@@ -1697,7 +1697,7 @@ class OPContainer(OPBaseWrapper):
                         actual_key = op_name
 
                     leaf_path = f"{container_path}.{actual_key}"
-                    leaf = OPLeaf(op, path=leaf_path, parent=container)
+                    leaf = OProxyLeaf(op, path=leaf_path, parent=container)
 
                     # Load extensions onto the leaf
                     if op_extensions:
@@ -1722,7 +1722,7 @@ class OPContainer(OPBaseWrapper):
         """
         Extend the container with an attribute or method from a Text DAT.
 
-        Container extensions are bound to the container instance (self refers to the OPContainer).
+        Container extensions are bound to the container instance (self refers to the OProxyContainer).
         """
         # Parameter validation
         if not (cls or func) and dat is not None:

@@ -3,15 +3,15 @@ import td
 
 def store(container, storage_dict, parent_path=""):
     """
-    Store an OPContainer into the TouchDesigner storage structure.
+    Store an OProxyContainer into the TouchDesigner storage structure.
 
     Args:
-        container: OPContainer to store
+        container: OProxyContainer to store
         storage_dict: The root storage dict (e.g., self.OProxies)
         parent_path: Path to parent container (empty string for root level)
     """
     if not hasattr(container, '_children'):
-        raise TypeError("Object must be an OPContainer with _children attribute")
+        raise TypeError("Object must be an OProxyContainer with _children attribute")
 
     # Build the container's storage representation
     container_data = {
@@ -22,7 +22,7 @@ def store(container, storage_dict, parent_path=""):
 
     # Process all children
     for name, child in container._children.items():
-        if hasattr(child, '_op'):  # This is an OPLeaf
+        if hasattr(child, '_op'):  # This is an OProxyLeaf
             # Store OP as object with path, raw OP, and extensions
             op_data = {
                 'path': child._op.path,
@@ -30,7 +30,7 @@ def store(container, storage_dict, parent_path=""):
                 'extensions': getattr(child, '_extensions', {})
             }
             container_data['ops'][name] = op_data
-        elif hasattr(child, '_children'):  # This is a nested OPContainer
+        elif hasattr(child, '_children'):  # This is a nested OProxyContainer
             # Recursively store nested container
             nested_storage = storage_dict
             if parent_path:
@@ -68,7 +68,7 @@ def remove(container, storage_dict, parent_path=""):
     Remove a container from the TouchDesigner storage structure.
 
     Args:
-        container: OPContainer to remove
+        container: OProxyContainer to remove
         storage_dict: The root storage dict (e.g., self.OProxies)
         parent_path: Path to parent container (empty string for root level)
     """
