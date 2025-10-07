@@ -1073,7 +1073,7 @@ class OPContainer(OPBaseWrapper):
             self.OProxies.setItem('children', container_data)
 
             # Update root extensions using setItem for proper dependency handling
-            self.OProxies.setItem('extensions', {name: ext._metadata for name, ext in self._extensions.items()})
+            self.OProxies.setItem('extensions', {name: {'metadata': ext._metadata, 'extensions': ext._build_storage_structure()} for name, ext in self._extensions.items()})
 
             self._updating_storage = False
 

@@ -81,15 +81,18 @@ expected ={
     "children": {},
     "extensions": {
       "test": {
-        "cls": "myClass",
-        "func": None,
-        "dat_path": "/project1/myProject/extensions_for_tests",
-        "dat_op": "<OP_OBJECT>",
-        "args": [
-          "arg"
-        ],
-        "call": True,
-        "created_at": 1759725160.292602
+        "metadata": {
+          "cls": "myClass",
+          "func": None,
+          "dat_path": "/project1/myProject/extensions_for_tests",
+          "dat_op": "<OP_OBJECT>",
+          "args": [
+            "arg"
+          ],
+          "call": True,
+          "created_at": 1759853993.566761
+        },
+        "extensions": {}
       }
     }
   }

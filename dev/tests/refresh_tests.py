@@ -285,17 +285,60 @@ tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matche
 tf.info('Now going to test adding an extension then renaming it and calling _refresh on the extension')
 opr._extend('testing', func='hello', dat='rename_extensions_for_tests')
 tf.info('Here is storage before refresh')
+print(tf.remove_created_at(opr._storage(as_dict=True)))
 current_storage = tf.remove_created_at(opr._storage(as_dict=True))
-expected = {'children': {'items': {'children': {}, 'ops': {'changed1': {'op': {'name': 'changed1', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed1'}, 'extensions': {}}, 'op2': {'op': {'name': 'changed2', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed2'}, 'extensions': {}}, 'op3': {'op': {'name': 'op3', 'type': 'moviefileinTOP', 'path': '/project1/myProject/op3'}, 'extensions': {}}}, 'extensions': {}}}, 'extensions': {'testing': {'cls': None, 'func': 'hello', 'dat_op': {'name': 'rename_extensions_for_tests', 'type': 'textDAT', 'path': '/project1/myProject/rename_extensions_for_tests'}, 'args': None, 'call': False}}}
+expected = {'children': {'items': {'children': {}, 'ops': {'changed1': {'op': {'name': 'changed1', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed1'}, 'extensions': {}}, 'op2': {'op': {'name': 'changed2', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed2'}, 'extensions': {}}, 'op3': {'op': {'name': 'op3', 'type': 'moviefileinTOP', 'path': '/project1/myProject/op3'}, 'extensions': {}}}, 'extensions': {}}}, 'extensions': {'testing': {'metadata': {'cls': None, 'func': 'hello', 'dat_op': {'name': 'rename_extensions_for_tests', 'type': 'textDAT', 'path': '/project1/myProject/rename_extensions_for_tests'}, 'args': None, 'call': False}, 'extensions': {}}}}
 tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected before extension refresh name test')
 tf.info('Now changing name of "rename_extensions_for_tests" to "renamed_extension"')
 op('rename_extensions_for_tests').name = 'renamed_extension'
 tf.info('Now going to refresh the extension')
 opr.testing._refresh()
 tf.info('Here is storage after refresh')
-opr._storage()
+print(tf.remove_created_at(opr._storage(as_dict=True)))
 current_storage = tf.remove_created_at(opr._storage(as_dict=True))
-expected = {'children': {'items': {'children': {}, 'ops': {'changed1': {'op': {'name': 'changed1', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed1'}, 'extensions': {}}, 'op2': {'op': {'name': 'changed2', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed2'}, 'extensions': {}}, 'op3': {'op': {'name': 'op3', 'type': 'moviefileinTOP', 'path': '/project1/myProject/op3'}, 'extensions': {}}}, 'extensions': {}}}, 'extensions': {'testing': {'cls': None, 'func': 'hello', 'dat_op': {'name': 'renamed_extension', 'type': 'textDAT', 'path': '/project1/myProject/renamed_extension'}, 'args': None, 'call': False}}}
+expected = {'children': {'items': {'children': {}, 'ops': {'changed1': {'op': {'name': 'changed1', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed1'}, 'extensions': {}}, 'op2': {'op': {'name': 'changed2', 'type': 'moviefileinTOP', 'path': '/project1/myProject/changed2'}, 'extensions': {}}, 'op3': {'op': {'name': 'op3', 'type': 'moviefileinTOP', 'path': '/project1/myProject/op3'}, 'extensions': {}}}, 'extensions': {}}}, 'extensions': {'testing': {'metadata': {'cls': None, 'func': 'hello', 'dat_op': {'name': 'renamed_extension', 'type': 'textDAT', 'path': '/project1/myProject/renamed_extension'}, 'args': None, 'call': False}, 'extensions': {}}}}
 tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after extension refresh for new extension rename')
+
+tf.info('Now testing calling extension classes in the same DAT. clearing storage...')
+opr._clear()
+
+def myFunc(self):
+	print('hello world', 'in-dat extension function called with dat=me')
+
+class inlineClass:
+	def __init__(self, args):
+		if args:
+			self.args = args
+		print('inline Class initiated')
+	def hello(self):
+		print(f'hello called and here are your args {self.args}')
+class one:
+	def __init__(self, args):
+		if args:
+			self.args = args
+		print('inline Class initiated')
+	def hello(self):
+		print(f'hello called and here are your args {self.args}')
+class two:
+	def __init__(self, args):
+		if args:
+			self.args = args
+		print('inline Class initiated')
+	def hello(self):
+		print(f'hello called and here are your args {self.args}')
+	
+tf.info("Running 'opr._extend(func='myFunc', dat=me)' ")	
+opr._extend(func='myFunc', dat=me)
+tf.info("Running 'opr._extend(cls='inlineClass', dat=me)' ")
+opr._extend(cls='inlineClass', dat=me)
+tf.info("Calling 'opr.myFunc()'")
+opr.myFunc()
+tf.info("Calling 'opr.inlineClass('WHADDUP').hello()' ")
+opr.inlineClass('WHADDUP').hello()
+tf.info("Here is storage")
+current_storage = tf.remove_created_at(opr._storage(as_dict=True))
+print(tf.remove_created_at(opr._storage(as_dict=True)))
+expected = {'children': {}, 'extensions': {'myFunc': {'metadata': {'cls': None, 'func': 'myFunc', 'dat_op': {'name': 'refresh_tests', 'type': 'textDAT', 'path': '/project1/myProject/refresh_tests'}, 'args': None, 'call': False}, 'extensions': {}}, 'inlineClass': {'metadata': {'cls': 'inlineClass', 'func': None, 'dat_op': {'name': 'refresh_tests', 'type': 'textDAT', 'path': '/project1/myProject/refresh_tests'}, 'args': None, 'call': False}, 'extensions': {}}}}
+tf.testCheck(current_storage == expected, 'storage', 'Checking if storage matches expected after extension classes in the same DAT')
 
 tf.done('_refresh')
