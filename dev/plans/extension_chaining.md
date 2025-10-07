@@ -98,11 +98,11 @@ Extensions become hierarchical containers that can hold their own extensions:
 ```
 
 ### 2. Method Return Values (Proposed)
-All extension methods return `self` for consistent chaining:
+All extension methods return `self` for consistent chaining, with optional `returnObj` flag to return the new extension instead:
 
-- **OPContainer._extend()**: Change from `return extension` to `return self`
-- **OPLeaf._extend()**: Keep `return self` (already correct)
-- **OProxyExtension._extend()**: Implement to return `self`
+- **OPContainer._extend()**: Returns `self` (or extension if `returnObj=True`)
+- **OPLeaf._extend()**: Returns `self` (or extension if `returnObj=True`)
+- **OProxyExtension._extend()**: Returns `self` (or extension if `returnObj=True`)
 
 ### 3. OProxyExtension Changes
 - Initialize `self._extensions = {}` in `__init__`
@@ -170,6 +170,21 @@ opr._extend(cls='Utils', dat=me)._extend(cls='Math', dat=me)._extend(cls='Stats'
 # Mix containers and extensions
 opr.containers._extend(cls='Helper', dat=me)
 opr.containers.Helper._extend(func='validate', dat=me)
+```
+
+### Chaining with returnObj
+```python
+# Basic usage - return the new extension
+hey = opr._extend('test', func='hello', dat=me, returnObj=True)
+hey()  # Calls the extension directly
+
+# Selective return in long chain
+hey = opr._extend('one', ...)._extend('two', ...)._extend('three', returnObj=True)._extend('four', ...)
+# hey is now opr.one.two.three
+
+# Best practice: Use attribute access when possible
+opr._extend('one', ...)._extend('two', ...)
+hey = opr.one.two  # Cleaner and more explicit
 ```
 
 ## Migration Strategy

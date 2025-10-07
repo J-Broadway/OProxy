@@ -567,14 +567,27 @@ class OProxyExtension(OPBaseWrapper):
 
     def _remove(self):
         """
-        Remove this extension from its parent and clean up storage.
+        Remove this extension from its parent and recursively clean up nested extensions.
 
-        Implementation will:
+        Implementation:
+        - Recursively remove all child extensions first
         - Remove extension from parent's _extensions registry
         - Remove extension attribute from parent object
         - Clean up extension data from storage
         - Update storage persistence
         """
+        # First, recursively remove all child extensions
+        extensions_to_remove = list(self._extensions.keys())  # Create a copy of keys
+        for ext_name in extensions_to_remove:
+            try:
+                child_extension = self._extensions[ext_name]
+                Log(f"Recursively removing child extension '{ext_name}' from extension '{getattr(self, '_extension_name', 'unknown')}'", status='debug', process='_remove')
+                child_extension._remove()
+            except Exception as e:
+                Log(f"Failed to remove child extension '{ext_name}': {e}", status='error', process='_remove')
+                continue
+
+        # Now remove this extension from its parent
         if self._parent:
             # Remove from parent's extension registry
             if hasattr(self._parent, '_extensions') and hasattr(self, '_extension_name'):
@@ -595,7 +608,7 @@ class OProxyExtension(OPBaseWrapper):
             except Exception as e:
                 Log(f"Failed to update storage during extension removal: {e}", status='error', process='_remove')
 
-        Log(f"Extension '{getattr(self, '_extension_name', 'unknown')}' removed successfully", status='info', process='_remove')
+        Log(f"Extension '{getattr(self, '_extension_name', 'unknown')}' and all nested extensions removed successfully", status='info', process='_remove')
         return self
 
     def _add(self, name, op):
@@ -663,14 +676,287 @@ class OProxyExtension(OPBaseWrapper):
             Log(f"Source DAT for extension '{getattr(self, '_extension_name', 'unknown')}' not found or invalid", status='warning', process='_refresh')
 
     def _refresh_extensions(self, target=None):
-        """Refresh any attached sub-extensions (currently none)"""
-        # Placeholder for future sub-extension support
-        # Extensions currently cannot have extensions attached
-        pass
+        """Load stored extension metadata and recursively refresh sub-extensions."""
+        # Get the stored extensions data for this extension
+        extensions_data = self._get_stored_extension_data()
+        if not extensions_data:
+            return
 
-    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
-        """Extensions cannot extend themselves."""
-        raise NotImplementedError("Extensions cannot be extended")
+        mod_ast = mod('mod_AST')
+
+        for ext_name, ext_data in extensions_data.items():
+            try:
+                # Extract metadata and sub-extensions data
+                metadata = ext_data.get('metadata', {})
+                sub_extensions_data = ext_data.get('extensions', {})
+
+                # Resolve DAT with fallback
+                dat_path = metadata.get('dat_path')
+                dat_op = metadata.get('dat_op')
+
+                dat = td.op(dat_path) if dat_path else None
+                if not (dat and dat.valid) and dat_op and dat_op.valid:
+                    dat = dat_op
+                    Log(f"Using stored DAT for extension '{ext_name}' on extension '{getattr(self, '_extension_name', 'unknown')}' (path may have changed)", status='debug', process='_refresh')
+
+                if dat and dat.valid:
+                    if dat_path and dat_path != dat.path:
+                        Log(f"Extension '{ext_name}' DAT path changed to '{dat.path}', updating metadata", status='debug', process='_refresh')
+                        metadata['dat_path'] = dat.path
+                        metadata['dat_op'] = dat
+                        changed = True
+                    else:
+                        changed = False
+
+                    # Re-extract the actual object
+                    actual_obj = mod_ast.Main(
+                        cls=metadata.get('cls'),
+                        func=metadata.get('func'),
+                        op=dat,
+                        log=Log
+                    )
+
+                    # Create extension wrapper
+                    extension = OProxyExtension(actual_obj, self, dat, metadata)
+                    extension._extension_name = ext_name
+
+                    # Recursively refresh sub-extensions if any
+                    if sub_extensions_data:
+                        # Temporarily set the extensions data for recursive refresh
+                        extension._temp_extensions_data = sub_extensions_data
+                        extension._refresh_extensions()
+                        delattr(extension, '_temp_extensions_data')
+
+                    # Apply to parent object
+                    setattr(self, ext_name, extension)
+
+                    # Store in registry
+                    self._extensions[ext_name] = extension
+
+                    # Update storage if metadata changed
+                    if changed:
+                        root = self
+                        while root and root._parent is not None:
+                            root = root._parent
+                        if hasattr(root, 'OProxies'):
+                            root._update_storage()
+
+                else:
+                    Log(f"Could not resolve DAT for extension '{ext_name}' on extension '{getattr(self, '_extension_name', 'unknown')}'", status='warning', process='_refresh')
+                    continue
+
+            except Exception as e:
+                Log(f"Failed to refresh extension '{ext_name}' on extension '{getattr(self, '_extension_name', 'unknown')}': {e}\n{traceback.format_exc()}", status='error', process='_refresh')
+                continue
+
+    def _get_stored_extension_data(self):
+        """Get the stored extensions data for this extension from the storage hierarchy."""
+        # Find the path to this extension in the storage structure
+        path_parts = self._get_extension_storage_path()
+        if not path_parts:
+            return None
+
+        # Navigate the storage structure
+        root = self._find_root()
+        if not hasattr(root, 'OProxies'):
+            return None
+
+        current_data = root.OProxies.getRaw() if hasattr(root.OProxies, 'getRaw') else dict(root.OProxies)
+
+        # Navigate through the path to find this extension's data
+        for part in path_parts[:-1]:  # All parts except the last (which is this extension's name)
+            if isinstance(current_data, dict) and part in current_data:
+                current_data = current_data[part]
+            else:
+                return None
+
+        # The last part should be the extensions dict for the parent of this extension
+        if isinstance(current_data, dict) and 'extensions' in current_data:
+            parent_extensions = current_data['extensions']
+            ext_name = path_parts[-1]
+            if isinstance(parent_extensions, dict) and ext_name in parent_extensions:
+                ext_data = parent_extensions[ext_name]
+                if isinstance(ext_data, dict) and 'extensions' in ext_data:
+                    return ext_data['extensions']
+
+        return None
+
+    def _get_extension_storage_path(self):
+        """Get the path to this extension in the storage hierarchy."""
+        path_parts = []
+        current = self
+
+        # Walk up the hierarchy collecting extension names
+        while current and isinstance(current, OProxyExtension):
+            if hasattr(current, '_extension_name'):
+                path_parts.insert(0, current._extension_name)
+            current = current._parent
+
+        # Now walk up to find the container/leaf path
+        container_path = []
+        while current and current._parent is not None:
+            if hasattr(current, 'path') and current.path:
+                container_path.insert(0, current.path)
+            current = current._parent
+
+        # Combine container path with extension path
+        full_path = container_path + path_parts
+        return full_path if full_path else None
+
+    def _extend(self, attr_name=None, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False, max_depth=10):
+        """
+        Extend this extension with an attribute or method from a Text DAT.
+
+        Extension extensions are bound to the extension instance (self refers to the OProxyExtension).
+
+        Args:
+            max_depth: Maximum nesting depth to prevent infinite recursion (default: 10)
+        """
+        try:
+            # Parameter validation
+            if not (cls or func) and dat is not None:
+                raise ValueError("Must specify either 'cls' or 'func' when 'dat' is provided")
+            if (cls and func) or (not cls and not func):
+                raise ValueError("Must specify exactly one of 'cls' or 'func' when 'dat' is provided, or neither for direct value")
+            if not dat:
+                raise ValueError("'dat' parameter is required for extensions")
+
+            # Auto-default attr_name to func or cls name if not provided
+            if attr_name is None:
+                attr_name = func or cls
+
+            # Validate attr_name as Python identifier
+            if not isinstance(attr_name, str):
+                raise ValueError(f"attr_name must be a string, got {type(attr_name).__name__}")
+            if not attr_name:
+                raise ValueError("attr_name cannot be empty")
+            if not attr_name.isidentifier():
+                raise ValueError(f"attr_name '{attr_name}' is not a valid Python identifier. "
+                               f"Names must contain only letters, digits, and underscores, "
+                               f"cannot start with a digit, and cannot contain spaces or special characters. "
+                               f"Use underscores instead of spaces (e.g., 'my_extension' instead of 'my extension').")
+            if keyword.iskeyword(attr_name):
+                raise ValueError(f"attr_name '{attr_name}' is a Python keyword and cannot be used")
+
+            # Check depth limit
+            current_depth = self._get_extension_depth()
+            if current_depth >= max_depth:
+                raise ValueError(f"Maximum extension depth ({max_depth}) exceeded. "
+                               f"Current depth: {current_depth}. Cannot extend further.")
+
+            # Check for circular dependencies
+            if self._would_create_circular_dependency(cls, func, dat):
+                raise ValueError(f"Extending with cls='{cls}', func='{func}' from '{dat}' "
+                               f"would create a circular dependency")
+
+            # Import AST extraction module
+            mod_ast = mod('mod_AST')
+
+            # Validate DAT
+            try:
+                dat = td_isinstance(dat, 'textdat', allow_string=True)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid DAT: {e}")
+
+            # Check for naming conflicts
+            if hasattr(self, attr_name) and not monkey_patch:
+                existing_attr = getattr(self, attr_name)
+                if not isinstance(existing_attr, OProxyExtension):
+                    raise ValueError(f"Name '{attr_name}' conflicts with existing method/property. "
+                                   f"To overwrite, use monkey_patch=True.")
+
+            # Extract the actual object
+            try:
+                actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+            except Exception as e:
+                raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+
+            # Prepare metadata
+            metadata = {
+                'cls': cls, 'func': func, 'dat_path': dat.path,
+                'dat_op': dat,  # Add this for rename fallback
+                'args': args, 'call': call, 'created_at': time.time()
+            }
+
+            # Create extension wrapper
+            extension = OProxyExtension(actual_obj, self, dat, metadata)
+
+            # Store extension name for removal purposes
+            extension._extension_name = attr_name
+
+            # Handle call parameter
+            if call:
+                if args is not None and not isinstance(args, (tuple, list)):
+                    raise TypeError("args must be a tuple or list of positional arguments when call=True")
+
+                if call:
+                    if isinstance(actual_obj, type):  # Class instantiation
+                        result = actual_obj(*args) if args else actual_obj()
+                        extension = OProxyExtension(result, self, dat, metadata)
+                        extension._extension_name = attr_name
+                    else:  # Function call
+                        bound_method = types.MethodType(actual_obj, self)
+                        result = bound_method(*args) if args else bound_method()
+                        extension = OProxyExtension(bound_method, self, dat, metadata)
+                        extension._extension_name = attr_name
+
+            # Apply extension to parent object (make it accessible)
+            setattr(self, attr_name, extension)
+
+            # Store in internal registry for management
+            self._extensions[attr_name] = extension
+
+            # Update storage by finding root and updating
+            root = self
+            while root and root._parent is not None:
+                root = root._parent
+            if hasattr(root, 'OProxies'):
+                root._update_storage()
+
+            Log(f"Extension '{attr_name}' added to extension '{getattr(self, '_extension_name', 'unknown')}'", status='info', process='_extend')
+            return self
+        except Exception as e:
+            Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
+            raise
+
+    def _get_extension_depth(self):
+        """Get the current nesting depth of this extension."""
+        depth = 0
+        current = self._parent
+        while current is not None:
+            if isinstance(current, OProxyExtension):
+                depth += 1
+            current = getattr(current, '_parent', None)
+        return depth
+
+    def _would_create_circular_dependency(self, cls, func, dat):
+        """
+        Check if extending with the given parameters would create a circular dependency.
+
+        Returns True if circular dependency would be created.
+        """
+        # Get the source DAT path for comparison
+        if hasattr(dat, 'path'):
+            source_path = dat.path
+        else:
+            source_path = str(dat)
+
+        # Walk up the parent chain and check if any parent extension
+        # was created from the same source
+        current = self._parent
+        while current is not None:
+            if isinstance(current, OProxyExtension):
+                # Check if this parent extension was created from the same source
+                parent_metadata = getattr(current, '_metadata', {})
+                parent_dat_path = parent_metadata.get('dat_path')
+                if parent_dat_path == source_path:
+                    # Same source DAT - check if same extraction (cls/func)
+                    parent_cls = parent_metadata.get('cls')
+                    parent_func = parent_metadata.get('func')
+                    if parent_cls == cls and parent_func == func:
+                        return True
+            current = getattr(current, '_parent', None)
+        return False
 
     def _storage(self, keys=None, as_dict=False):
         """
@@ -1535,7 +1821,7 @@ class OPContainer(OPBaseWrapper):
         except Exception as e:
             Log(f"Extension creation failed for '{attr_name}': {e}\n{traceback.format_exc()}", status='error', process='_extend')
             raise
-        return extension
+        return self
 
     def _storage(self, keys=None, as_dict=False):
         """
