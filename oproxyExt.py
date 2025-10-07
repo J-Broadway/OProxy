@@ -8,4 +8,5 @@ class oproxyExt:
 	"""
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp 
-		self.Log = OPLogger.root(ownerComp) 
+		self.Log = OPLogger.root(ownerComp)
+		self.MonkeyPatch = op('MonkeyPatchHelpers')
