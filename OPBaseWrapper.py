@@ -559,12 +559,10 @@ class OProxyExtension(OPBaseWrapper):
     def _build_storage_structure(self):
         """Build hierarchical structure for this extension's extensions."""
         return {
-            'extensions': {
-                name: {
-                    'metadata': ext._metadata,
-                    'extensions': ext._build_storage_structure()
-                } for name, ext in self._extensions.items()
-            }
+            name: {
+                'metadata': ext._metadata,
+                'extensions': ext._build_storage_structure()
+            } for name, ext in self._extensions.items()
         }
 
     def _remove(self):

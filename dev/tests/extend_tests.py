@@ -39,13 +39,16 @@ expected = {
         },
         "extensions": {
           "test": {
-            "cls": None,
-            "func": "hello",
-            "dat_path": "/project1/myProject/extensions_for_tests",
-            "dat_op": "<OP_OBJECT>",
-            "args": None,
-            "call": False,
-            "created_at": 1759724954.9442296
+            "metadata": {
+              "cls": None,
+              "func": "hello",
+              "dat_path": "/project1/myProject/extensions_for_tests",
+              "dat_op": "<OP_OBJECT>",
+              "args": None,
+              "call": False,
+              "created_at": 1759853778.3514366
+            },
+            "extensions": {}
           }
         }
       }
