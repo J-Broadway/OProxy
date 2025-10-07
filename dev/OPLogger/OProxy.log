@@ -2,7 +2,7 @@
 <OProxy [INFO:_clear]> Starting _clear operation
 <OProxy [DEBUG:_clear]> Clearing root extensions: []
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:info]> 

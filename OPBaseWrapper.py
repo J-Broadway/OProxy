@@ -581,8 +581,66 @@ class OProxyExtension(OPBaseWrapper):
         return f"Extension: {self.__class__.__name__}"
 
     def _refresh(self, target=None):
-        """Extensions don't refresh themselves."""
-        raise NotImplementedError("Extensions cannot be refreshed")
+        """Refresh extension state and re-extract from source DAT"""
+        try:
+            # Check source DAT validity and re-extract if needed
+            self._refresh_source_dat()
+            # Refresh any sub-extensions (future-proofing)
+            self._refresh_extensions(target)
+        except Exception as e:
+            Log(f"Extension refresh failed for {getattr(self, '_extension_name', 'unknown')}: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
+
+    def _refresh_source_dat(self):
+        """Check and refresh the source DAT connection"""
+        if not hasattr(self, '_source_dat') or not hasattr(self, '_metadata'):
+            return  # No source DAT to refresh
+
+        metadata = self._metadata
+        stored_path = metadata.get('dat_path')
+        stored_dat = metadata.get('dat_op')
+
+        # Try current path first
+        dat = td.op(stored_path) if stored_path else None
+
+        # Fall back to stored DAT object
+        if not (dat and dat.valid) and stored_dat and stored_dat.valid:
+            dat = stored_dat
+            Log(f"Using stored DAT object for extension '{getattr(self, '_extension_name', 'unknown')}' (path may have changed)", status='debug', process='_refresh')
+
+        if dat and dat.valid:
+            # Check for path changes
+            if stored_path != dat.path:
+                Log(f"Extension '{getattr(self, '_extension_name', 'unknown')}' source DAT path changed from '{stored_path}' to '{dat.path}'", status='info', process='_refresh')
+                metadata['dat_path'] = dat.path
+                metadata['dat_op'] = dat
+                changed = True
+            else:
+                changed = False
+
+            # Re-extract the underlying object
+            mod_ast = mod('mod_AST')
+            actual_obj = mod_ast.Main(
+                cls=metadata['cls'],
+                func=metadata['func'],
+                op=dat,
+                log=Log
+            )
+
+            # Update the extension's internal object
+            self._actual = actual_obj
+
+            # Update storage if path changed
+            if changed and self._parent:
+                self._find_root()._update_storage()
+
+        else:
+            Log(f"Source DAT for extension '{getattr(self, '_extension_name', 'unknown')}' not found or invalid", status='warning', process='_refresh')
+
+    def _refresh_extensions(self, target=None):
+        """Refresh any attached sub-extensions (currently none)"""
+        # Placeholder for future sub-extension support
+        # Extensions currently cannot have extensions attached
+        pass
 
     def _extend(self, attr_name, cls=None, func=None, dat=None, args=None, call=False, monkey_patch=False):
         """Extensions cannot extend themselves."""
