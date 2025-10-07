@@ -242,7 +242,7 @@ Here's storage
 Now going to rename "op1" --> "changed1" and "op2" --> "changed2" but only call refresh on "op1" to make sure only one name change is detected
 
  
-Here is storage
+Here is storage before refresh
 
 <OProxy [INFO:_storage]> Storage branch for container 'root'
 "root" : {
@@ -283,8 +283,9 @@ Here is storage
 <OProxy [TEST:info]> 
 Running _refresh() on "op1"
 
- 
-Here is storage
+<OProxy [INFO:_refresh]> Leaf OP name changed from 'op1' to 'changed1', updating parent mapping
+<OProxy [TEST:info]> 
+Here is storage after refresh
 
 <OProxy [INFO:_storage]> Storage branch for container 'root'
 "root" : {
@@ -292,7 +293,7 @@ Here is storage
         "items": {
             "children": {},
             "ops": {
-                "op1": {
+                "changed1": {
                     "op": {
                         "name": "changed1",
                         "type": "moviefileinTOP",

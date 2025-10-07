@@ -231,8 +231,32 @@ class OPLeaf(OPBaseWrapper):
         return f"Leaf: {self._op.name} ({self._op.path})"
 
     def _refresh(self, target=None):
-        """Refresh leaf extensions"""
+        """Refresh leaf - check for name changes and refresh extensions"""
         try:
+            # Check for name changes and update parent's children dictionary if needed
+            if self._parent:
+                # Find current key for this leaf in parent's children
+                current_key = None
+                for child_name, child in self._parent._children.items():
+                    if child is self:
+                        current_key = child_name
+                        break
+
+                if current_key and current_key != self._op.name:
+                    Log(f"Leaf OP name changed from '{current_key}' to '{self._op.name}', updating parent mapping", status='info', process='_refresh')
+                    # Preserve order when renaming key
+                    children = self._parent._children
+                    keys = list(children.keys())
+                    values = list(children.values())
+                    index = keys.index(current_key)
+                    keys[index] = self._op.name
+                    children.clear()
+                    children.update(zip(keys, values))
+                    # Update path to reflect new name
+                    self._path = f"{self._parent.path}.{self._op.name}" if self._parent.path else self._op.name
+                    if self._parent:
+                        self._find_root()._update_storage()
+
             self._refresh_extensions(target)
         except Exception as e:
             Log(f"Leaf refresh failed for {self.path}: {e}\n{traceback.format_exc()}", status='error', process='_refresh')
@@ -308,7 +332,7 @@ class OPLeaf(OPBaseWrapper):
 
                     # After setting extension
                     if changed and self._parent:
-                        self._parent._update_storage()
+                        self._find_root()._update_storage()
 
                 else:
                     Log(f"Could not resolve DAT for extension '{ext_name}' on leaf '{self.path}'", status='warning', process='_refresh')
@@ -1188,7 +1212,7 @@ class OPContainer(OPBaseWrapper):
 
                     # After setting extension
                     if changed and self._parent:
-                        self._parent._update_storage()
+                        self._find_root()._update_storage()
 
                 else:
                     Log(f"Could not resolve DAT for container extension '{ext_name}' on container '{self.path}'", status='warning', process='_refresh')
