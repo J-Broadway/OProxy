@@ -490,6 +490,7 @@ class OProxyExtension(OPBaseWrapper):
         self._actual = actual_obj  # The extracted class/function
         self._source_dat = source_dat
         self._metadata = metadata or {}
+        self._extensions = {}  # Initialize extensions dict for hierarchy
 
         # Dynamically copy attributes from actual object for delegation
         self._copy_attributes_from_actual()
@@ -553,6 +554,17 @@ class OProxyExtension(OPBaseWrapper):
             'metadata': self._metadata,
             'actual_type': type(self._actual).__name__,
             'is_callable': callable(self._actual)
+        }
+
+    def _build_storage_structure(self):
+        """Build hierarchical structure for this extension's extensions."""
+        return {
+            'extensions': {
+                name: {
+                    'metadata': ext._metadata,
+                    'extensions': ext._build_storage_structure()
+                } for name, ext in self._extensions.items()
+            }
         }
 
     def _remove(self):
@@ -1034,7 +1046,7 @@ class OPContainer(OPBaseWrapper):
         Log("Saving container hierarchy to storage", status='debug', process='_update_storage')
 
         # Build the complete nested storage structure
-        children_data = self.__build_storage_structure()
+        children_data = self._build_storage_structure()
 
         # Replace children structure using setItem for proper dependency handling
         self.OProxies.setItem('children', children_data)
@@ -1057,7 +1069,7 @@ class OPContainer(OPBaseWrapper):
             self._updating_storage = True
 
             # Rebuild this container's complete storage structure
-            container_data = self.__build_storage_structure()
+            container_data = self._build_storage_structure()
 
             # For root container, replace entire children structure using setItem for proper dependency handling
             self.OProxies.setItem('children', container_data)
@@ -1093,7 +1105,7 @@ class OPContainer(OPBaseWrapper):
         # TODO: Implement true incremental update navigation
         root._update_storage()
 
-    def __build_storage_structure(self):
+    def _build_storage_structure(self):
         """Recursively build the nested storage structure from container hierarchy."""
         result = {}
 
@@ -1101,9 +1113,9 @@ class OPContainer(OPBaseWrapper):
             if isinstance(child, OPContainer):
                 # Build structure for this container
                 container_data = {
-                    'children': child.__build_storage_structure(),  # Recursively build nested children
+                    'children': child._build_storage_structure(),  # Recursively build nested children
                     'ops': {},  # OPs in this container
-                    'extensions': {name: ext._metadata for name, ext in child._extensions.items()}  # Container extensions metadata
+                    'extensions': {name: {'metadata': ext._metadata, 'extensions': ext._build_storage_structure()} for name, ext in child._extensions.items()}  # Hierarchical extensions
                 }
 
                 # Add OPs from this container
@@ -1113,7 +1125,7 @@ class OPContainer(OPBaseWrapper):
                         op_data = {
                             'path': op_child._op.path,
                             'op': op_child._op,  # Store raw OP object for name change detection
-                            'extensions': {name: ext.metadata for name, ext in op_child._extensions.items()}  # Extensions metadata
+                            'extensions': {name: {'metadata': ext._metadata, 'extensions': ext._build_storage_structure()} for name, ext in op_child._extensions.items()}  # Hierarchical extensions
                         }
                         container_data['ops'][op_name] = op_data
 
