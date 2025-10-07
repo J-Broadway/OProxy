@@ -1,19 +1,43 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: ['testing']
-<OProxy [INFO:_remove]> Extension 'testing' removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'testing'
+<OProxy [DEBUG:_clear]> Clearing root extensions: ['myFunc', 'inlineClass']
+<OProxy [INFO:_remove]> Extension 'myFunc' removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'myFunc'
+<OProxy [INFO:_remove]> Extension 'inlineClass' removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'inlineClass'
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [INFO:_extend]> Extension 'myFunc' added to container 'root'
  Extension 'inlineClass' added to container 'root'
-<OProxy [DEBUG:_add]> Processing 'test space' in container 'root'
-<OProxy [INFO:_add]> Creating new container 'test space'
-<OProxy [ERROR:_add]> _add operation failed: Name 'test space' is not a valid Python identifier. Names must contain only letters, digits, and underscores, cannot start with a digit, and cannot contain spaces or special characters. Use underscores instead of spaces (e.g., 'my_container' instead of 'my container').
-Traceback (most recent call last):
-  File "/project1/myProject/OProxy/OPBaseWrapper", line 910, in _add
-  File "/project1/myProject/OProxy/OPBaseWrapper", line 762, in _add_init
-  File "/project1/myProject/OProxy/OPBaseWrapper", line 715, in _validate_child_name
-ValueError: Name 'test space' is not a valid Python identifier. Names must contain only letters, digits, and underscores, cannot start with a digit, and cannot contain spaces or special characters. Use underscores instead of spaces (e.g., 'my_container' instead of 'my container').
+<OProxy [INFO:_storage]> Storage branch for container 'root'
+"root" : {
+    "children": {},
+    "extensions": {
+        "myFunc": {
+            "cls": null,
+            "func": "myFunc",
+            "dat_op": {
+                "name": "text6",
+                "type": "textDAT",
+                "path": "/project1/myProject/text6"
+            },
+            "args": null,
+            "call": false,
+            "created_at": 1759809496.1169305
+        },
+        "inlineClass": {
+            "cls": "inlineClass",
+            "func": null,
+            "dat_op": {
+                "name": "text6",
+                "type": "textDAT",
+                "path": "/project1/myProject/text6"
+            },
+            "args": null,
+            "call": false,
+            "created_at": 1759809496.1263552
+        }
+    }
+}
