@@ -18,32 +18,32 @@ class myClass:
 
 class Wrapper:
 	'''Use a wrapper cls so inheritance can be defined properly'''
-    mp = mod('OProxy/MonkeyPatch')
-    log = op('OProxy').Log
-    td_isinstance = mod('OProxy/utils').td_isinstance
+	mp = mod('OProxy/MonkeyPatch')
+	log = op('OProxy').Log
+	td_isinstance = mod('OProxy/utils').td_isinstance
 
-    class ResolutionMP(mp.OProxyContainer):
-        """Monkey-patched container that adds resolution() to leaves."""
+	class ResolutionMP(mp.OProxyContainer):
+		"""Monkey-patched container that adds resolution() to leaves."""
 
-        def __call__(self, identifier, **kwargs):
-            # Call parent's __call__ to get the original OProxyLeaf
-            leaf = super().__call__(identifier, **kwargs)
+		def __call__(self, identifier, **kwargs):
+			# Call parent's __call__ to get the original OProxyLeaf
+			leaf = super().__call__(identifier, **kwargs)
 
-            # Create a proxy wrapper to add custom methods to the leaf
-            class ResolutionProxy:
-                def __init__(self, inner_leaf):
-                    self._inner = inner_leaf  # Store the original leaf
+			# Create a proxy wrapper to add custom methods to the leaf
+			class ResolutionProxy:
+				def __init__(self, leaf):
+					self._leaf = leaf  # Store the original leaf
 
-                def __getattr__(self, name):
-                    # Delegate all other attribute access to the original leaf
-                    return getattr(self._inner, name)
+				def __getattr__(self, name):
+					# Delegate all other attribute access to the original leaf
+					return getattr(self._leaf, name)
 
-                def resolution(self):
-                    # Custom method: Check if the OP is a TOP, then return resolution
-                    if not td_isinstance(self._inner._op, 'top'):
-                        log("Not a TOP operator", status='error')
-                        raise ValueError("resolution() only for TOPs")
-                    return (self._inner._op.width, self._inner._op.height)
+				def resolution(self):
+					# Custom method: Check if the OP is a TOP, then return resolution
+					if not td_isinstance(self._leaf._op, 'top'):
+						log("Not a TOP operator", status='error')
+						raise ValueError("resolution() only for TOPs")
+					return (self._leaf._op.width, self._leaf._op.height)
 
-            # Return the proxy instead of the raw leaf
-            return ResolutionProxy(leaf)
+			# Return the proxy instead of the raw leaf
+			return ResolutionProxy(leaf)

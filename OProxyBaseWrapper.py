@@ -1419,6 +1419,8 @@ class OProxyContainer(OProxyBaseWrapper):
                     'ops': {},  # OPs in this container
                     'extensions': {name: {'metadata': ext._metadata, 'extensions': ext._build_storage_structure()} for name, ext in child._extensions.items()}  # Hierarchical extensions
                 }
+                if hasattr(child, '_monkey_patch'):
+                    container_data['monkey_patch'] = child._monkey_patch
 
                 # Add OPs from this container
                 for op_name, op_child in child._children.items():
@@ -1429,6 +1431,8 @@ class OProxyContainer(OProxyBaseWrapper):
                             'op': op_child._op,  # Store raw OP object for name change detection
                             'extensions': {name: {'metadata': ext._metadata, 'extensions': ext._build_storage_structure()} for name, ext in op_child._extensions.items()}  # Hierarchical extensions
                         }
+                        if hasattr(op_child, '_monkey_patch'):
+                            op_data['monkey_patch'] = op_child._monkey_patch
                         container_data['ops'][op_name] = op_data
 
                 result[name] = container_data
@@ -1668,7 +1672,17 @@ class OProxyContainer(OProxyBaseWrapper):
             Log(f"Loading nested container '{container_name}' under '{parent_path}'", status='debug', process='_refresh')
 
             container_path = f"{parent_path}.{container_name}"
-            container = OProxyContainer(path=container_path, parent=parent_container)
+            monkey_patch_data = container_data.get('monkey_patch')
+            if monkey_patch_data:
+                cls_name = monkey_patch_data['cls']
+                dat_path = monkey_patch_data['dat']
+                mod_ast = mod('mod_AST')
+                extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
+                container = extracted_cls(path=container_path, parent=parent_container, ops=None, root=False)
+                container._monkey_patch = monkey_patch_data
+            else:
+                container = OProxyContainer(path=container_path, parent=parent_container)
+            container._extensions = container_data.get('extensions', {})
 
             # Load OPs
             ops_data = container_data.get('ops', {})
@@ -1699,13 +1713,21 @@ class OProxyContainer(OProxyBaseWrapper):
                     current_name = op.name
                     if op_name != current_name:
                         Log(f"Nested OP name changed from '{op_name}' to '{current_name}', updating mapping", status='info', process='_refresh')
-                        # Use current name as key instead of stored name
                         actual_key = current_name
                     else:
                         actual_key = op_name
 
                     leaf_path = f"{container_path}.{actual_key}"
-                    leaf = OProxyLeaf(op, path=leaf_path, parent=container)
+                    monkey_patch_data = op_info.get('monkey_patch') if not isinstance(op_info, str) else None
+                    if monkey_patch_data:
+                        cls_name = monkey_patch_data['cls']
+                        dat_path = monkey_patch_data['dat']
+                        mod_ast = mod('mod_AST')
+                        extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
+                        leaf = extracted_cls(op=op, path=leaf_path, parent=container)
+                        leaf._monkey_patch = monkey_patch_data
+                    else:
+                        leaf = OProxyLeaf(op, path=leaf_path, parent=container)
 
                     # Load extensions onto the leaf
                     if op_extensions:
@@ -1795,6 +1817,8 @@ class OProxyContainer(OProxyBaseWrapper):
                 new_instance._extensions = existing._extensions
                 for ext in new_instance._extensions.values():
                     ext._parent = new_instance
+                dat_op = td_isinstance(dat, 'textdat', allow_string=True)
+                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path}
                 self._children[attr_name] = new_instance
             elif isinstance(existing, OProxyLeaf):
                 if not issubclass(extracted_cls, OProxyLeaf):
@@ -1803,6 +1827,8 @@ class OProxyContainer(OProxyBaseWrapper):
                 new_instance._extensions = existing._extensions
                 for ext in new_instance._extensions.values():
                     ext._parent = new_instance
+                dat_op = td_isinstance(dat, 'textdat', allow_string=True)
+                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path}
                 self._children[attr_name] = new_instance
 
             root = self._find_root()
