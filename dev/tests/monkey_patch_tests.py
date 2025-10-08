@@ -35,3 +35,9 @@ tf.info('checking storage after adding helloWorld monkey patch')
 opr._storage()
 tf.info('Calling "helloWorld()" on monkey patched OPLeaf')
 log(opr.items('op1').helloWorld())
+tf.info('Now going to run "monkey_patch_outside_tests" to make sure persistence works')
+try:
+	op('monkey_patch_outside_tests').run()
+except Exception as e:
+	log(e)
+

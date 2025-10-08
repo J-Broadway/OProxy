@@ -1,12 +1,8 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: ['myFunc', 'inlineClass']
-<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'myFunc'
-<OProxy [INFO:_remove]> Extension 'inlineClass' and all nested extensions removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'inlineClass'
+<OProxy [DEBUG:_clear]> Clearing root extensions: []
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 0 containers
+ Clearing in-memory hierarchy with 1 containers
  Reloading empty hierarchy
 <OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
 <OProxy [INFO:_clear]> _clear operation completed
@@ -299,3 +295,11 @@ checking storage after adding helloWorld monkey patch
 Calling "helloWorld()" on monkey patched OPLeaf
 
 <OProxy [INFO]> {'name': 'op1', 'path': '/project1/myProject/op1', 'parent_path': '/project1/myProject', 'op_type': 'moviefileinTOP', 'new_data': 'hello world'}
+<OProxy [TEST:info]> 
+Now going to run "monkey_patch_outside_tests" to make sure persistence works
+
+<OProxy [INFO]> File "/project1/myProject/monkey_patch_outside_tests", line 3
+  File "/project1/myProject/_oproxy_temp_mod_ast", line 9, in __call__
+  File "/project1/myProject/OProxy/OProxyBaseWrapper", line 1345, in __call__
+KeyError: "No OP named 'op1' in this container"
+Results of run operation resulted in exception.
