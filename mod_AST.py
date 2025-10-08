@@ -134,8 +134,27 @@ def Main(cls=None, func=None, op=None, log=None):
     code_text = op.text
     block_text = extract_block_text(code_text, target_name, target_type)
     try:
-        # Compile and exec only the extracted block
-        compiled = compile(block_text, '<string>', 'exec')
+        # Parse block to find undefined names
+        block_tree = ast.parse(block_text)
+        undefined = set()
+        for node in ast.walk(block_tree):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                undefined.add(node.id)
+
+        # Scan full code for definitions of undefined names
+        full_tree = ast.parse(code_text)
+        defs = {}
+        for node in ast.walk(full_tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in undefined:
+                        defs[target.id] = ast.unparse(node)
+
+        # Prepend definitions to block_text
+        prepended = '\n'.join(defs.values()) + '\n' + block_text
+
+        # Compile and exec
+        compiled = compile(prepended, '<string>', 'exec')
         exec(compiled)
         obj = locals()[target_name]
         if isinstance(obj, type) or callable(obj):

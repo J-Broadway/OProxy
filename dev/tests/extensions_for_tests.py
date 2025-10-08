@@ -44,7 +44,6 @@ class ResolutionMP(mp.OProxyContainer):
 
         # Return the proxy instead of the raw leaf
         return ResolutionProxy(leaf)
-```
 
 
 
