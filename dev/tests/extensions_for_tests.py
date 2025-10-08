@@ -29,16 +29,13 @@ class Wrapper:
 		def __call__(self, identifier, **kwargs):
 			# Call parent's __call__ to get the original OProxyLeaf
 			leaf = super().__call__(identifier, **kwargs)
-			log(f"ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type {type(leaf)} with path '{leaf.path}'")
 
 			# Create a proxy wrapper to add custom methods to the leaf
 			class ResolutionProxy:
 				def __init__(self, leaf):
 					self._leaf = leaf  # Store the original leaf
-					log(f"ResolutionProxy created wrapping leaf of type {type(leaf)} with path '{leaf.path}'")
 
 				def __getattr__(self, name):
-					log(f"ResolutionProxy.__getattr__ called for '{name}' on leaf type {type(self._leaf)}")
 					# Delegate all other attribute access to the original leaf
 					return getattr(self._leaf, name)
 
@@ -55,10 +52,8 @@ class Wrapper:
 	class helloWorld(mp.OProxyLeaf):
 		def __init__(self, *args, **kwargs):
 			super().__init__(*args, **kwargs)
-			log(f"helloWorld leaf created for OP '{self._op.name}' at path '{self.path}'")
 
 		def helloWorld(self):
-			log(f"helloWorld() called on leaf for OP '{self._op.name}'")
 			info = {
 				'name': self._op.name,
 				'path': self._op.path,

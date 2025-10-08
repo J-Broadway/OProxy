@@ -31,10 +31,7 @@ Adding containe opr._add('items', tf.mvs)
  Adding container 'items' to parent children dict
 <OProxy [INFO:_add]> Successfully created container 'items' with 3 OPs
 <OProxy [DEBUG:_update_storage]> Saving container hierarchy to storage
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op1' (OP: op1)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op2' (OP: op2)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op3' (OP: op3)
-<OProxy [DEBUG:_update_storage]> Saved 1 top-level containers to storage
+ Saved 1 top-level containers to storage
 <OProxy [TEST:info]> 
 Showing storage after _add()
 
@@ -85,9 +82,6 @@ verifying that MonkeyPatch path is correct
  now running opr._extend('items', cls='ResolutionMP', dat='extensions_for_tests', monkey_patch=True)
 
 <OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op1' (OP: op1)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op2' (OP: op2)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op3' (OP: op3)
 <OProxy [INFO:_extend]> Monkey-patched 'items' with 'ResolutionMP'
 <OProxy [TEST:info]> 
 showing storage after _extend()
@@ -127,7 +121,7 @@ showing storage after _extend()
             "monkey_patch": {
                 "cls": "ResolutionMP",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "5487f3dde2a41ef62c31bd0263f10bb55b76b75643cb6bdfe76a2036f4742a08",
+                "code_hash": "5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -141,16 +135,10 @@ showing storage after _extend()
 <OProxy [TEST:info]> 
 Now going to call the monkey patched container
 
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op1' (OP: op1)
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
- (1280, 720)
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op2' (OP: op2)
+<OProxy [INFO]> (1280, 720)
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op2') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
- (1000, 1000)
+<OProxy [INFO]> (1000, 1000)
 <OProxy [TEST:info]> 
 Now testing storage persistence after container is re-initialized
 
@@ -164,45 +152,20 @@ Now testing storage persistence after container is re-initialized
 <OProxy [DEBUG:_refresh]> Loading nested OP 'op1' from '/project1/myProject/op1'
  Loading nested OP 'op2' from '/project1/myProject/op2'
  Loading nested OP 'op3' from '/project1/myProject/op3'
- Monkey-patched container '.items' - checking for leaf monkey patches only
- Container '.items' children before leaf monkey patch refresh: ['op1', 'op2', 'op3']
- Refreshing leaf monkey patches for container '.items' with 3 stored ops
- Processing dict-like op_info for 'op1': <class 'dict'>
- No monkey patch data for leaf 'op1'
- Processing dict-like op_info for 'op2': <class 'dict'>
- No monkey patch data for leaf 'op2'
- Processing dict-like op_info for 'op3': <class 'dict'>
- No monkey patch data for leaf 'op3'
- Container '.items' children after leaf monkey patch refresh: ['op1', 'op2', 'op3']
  Refreshing container '.items' - parent: OProxyContainer 'root' [], is_root: False
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op1' (OP: op1)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op2' (OP: op2)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op3' (OP: op3)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op1' (OP: op1)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op2' (OP: op2)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op3' (OP: op3)
 <OProxy [INFO:Init]> OProxy root initialized
 <OProxy [TEST:info]> 
 Calling "resolution()" on monkey patched containers
 
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op1' (OP: op1)
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
- (1280, 720)
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op2' (OP: op2)
+<OProxy [INFO]> (1280, 720)
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op2') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
- (1000, 1000)
+<OProxy [INFO]> (1000, 1000)
 <OProxy [TEST:info]> 
 Now testing a monkey patched OPLeaf
 
 <OProxy [DEBUG:_extend]> Monkey-patching leaf 'op1' from <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> to <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
-<OProxy [INFO]> helloWorld leaf created for OP 'op1' at path 'items.op1'
-<OProxy [DEBUG:_extend]> Replaced leaf 'op1' in children: <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> -> <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op2' (OP: op2)
- OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf 'items.op3' (OP: op3)
+ Replaced leaf 'op1' in children: <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> -> <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
 <OProxy [INFO:_extend]> Monkey-patched 'op1' with 'helloWorld'
 <OProxy [TEST:info]> 
 checking storage after adding helloWorld monkey patch
@@ -223,7 +186,7 @@ checking storage after adding helloWorld monkey patch
                     "monkey_patch": {
                         "cls": "helloWorld",
                         "dat": "/project1/myProject/extensions_for_tests",
-                        "code_hash": "5487f3dde2a41ef62c31bd0263f10bb55b76b75643cb6bdfe76a2036f4742a08",
+                        "code_hash": "5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006",
                         "dat_op": {
                             "name": "extensions_for_tests",
                             "type": "textDAT",
@@ -252,7 +215,7 @@ checking storage after adding helloWorld monkey patch
             "monkey_patch": {
                 "cls": "ResolutionMP",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "5487f3dde2a41ef62c31bd0263f10bb55b76b75643cb6bdfe76a2036f4742a08",
+                "code_hash": "5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -267,26 +230,14 @@ checking storage after adding helloWorld monkey patch
 Calling "helloWorld()" on monkey patched OPLeaf
 
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path 'items.op1'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path 'items.op1'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path 'items.op1'
- ResolutionProxy.__getattr__ called for 'helloWorld' on leaf type <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
- helloWorld() called on leaf for OP 'op1'
- {'name': 'op1', 'path': '/project1/myProject/op1', 'parent_path': '/project1/myProject', 'op_type': 'moviefileinTOP', 'new_data': 'hello world'}
+<OProxy [INFO]> {'name': 'op1', 'path': '/project1/myProject/op1', 'parent_path': '/project1/myProject', 'op_type': 'moviefileinTOP', 'new_data': 'hello world'}
 <OProxy [TEST:info]> 
 Now going to run "monkey_patch_outside_tests" to make sure persistence works
 
-<OProxy [DEBUG:__getattr__]> OProxyLeaf.__getattr__ called for '_monkey_patch' on leaf '.items.op1' (OP: op1)
-<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '5487f3dde2a41ef62c31bd0263f10bb55b76b75643cb6bdfe76a2036f4742a08', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
-<OProxy [INFO]> helloWorld leaf created for OP 'op1' at path '.items.op1'
+<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
 <OProxy [INFO:__call__]> Restored monkey patch for leaf 'op1' with 'helloWorld'
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
-<OProxy [INFO]> ResolutionMP.__call__ returning ResolutionProxy wrapping leaf of type <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
- ResolutionProxy created wrapping leaf of type <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
- ResolutionProxy.__getattr__ called for 'helloWorld' on leaf type <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
- helloWorld() called on leaf for OP 'op1'
+ OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
 <OProxy [TEST:info]> 
 extension persistence working thus far!
 

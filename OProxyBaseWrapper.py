@@ -266,9 +266,7 @@ class OProxyLeaf(OProxyBaseWrapper):
 
     def _refresh_extensions(self, target=None):
         """Load stored extension metadata and re-extract from DATs for this leaf."""
-        Log(f"Starting _refresh_extensions for leaf '{self.path}'", status='debug', process='_refresh')
         if not self._parent:
-            Log(f"No parent for leaf '{self.path}', skipping _refresh_extensions", status='debug', process='_refresh')
             return
 
         # Get the stored data for this leaf from parent's storage
@@ -280,28 +278,23 @@ class OProxyLeaf(OProxyBaseWrapper):
 
         # Find this leaf in stored ops
         leaf_name = None
-        Log(f"Looking for leaf '{self.path}' (op path: '{self._op.path}') in stored ops data", status='debug', process='_refresh')
         for stored_name, op_info in ops_data.items():
             # Handle TDStoreTools.DependDict objects
             if hasattr(op_info, 'get') and hasattr(op_info, 'keys'):  # Detect dict-like (e.g., DependDict)
                 if hasattr(op_info, 'getRaw'):
                     op_info = op_info.getRaw()
                 stored_path = op_info.get('path', '')
-                Log(f"Checking stored op '{stored_name}' with path '{stored_path}' (DependDict)", status='debug', process='_refresh')
                 if stored_path == self._op.path:
                     leaf_name = stored_name
                     extensions_data = op_info.get('extensions', {})
                     monkey_patch_data = op_info.get('monkey_patch')
-                    Log(f"Found matching leaf '{leaf_name}' - has extensions: {bool(extensions_data)}, has monkey_patch: {bool(monkey_patch_data)}", status='debug', process='_refresh')
                     break
             elif isinstance(op_info, dict):
                 stored_path = op_info.get('path', '')
-                Log(f"Checking stored op '{stored_name}' with path '{stored_path}'", status='debug', process='_refresh')
                 if stored_path == self._op.path:
                     leaf_name = stored_name
                     extensions_data = op_info.get('extensions', {})
                     monkey_patch_data = op_info.get('monkey_patch')
-                    Log(f"Found matching leaf '{leaf_name}' - has extensions: {bool(extensions_data)}, has monkey_patch: {bool(monkey_patch_data)}", status='debug', process='_refresh')
                     break
 
         if not leaf_name or not extensions_data:
@@ -363,7 +356,6 @@ class OProxyLeaf(OProxyBaseWrapper):
                 Log(f"Failed to reload extension '{ext_name}' on leaf '{self.path}': {e}\n{traceback.format_exc()}", status='warning', process='_refresh')
 
     def __getattr__(self, name):
-        Log(f"OProxyLeaf.__getattr__ called for '{name}' on leaf '{self.path}' (OP: {self._op.name})", status='debug', process='__getattr__')
         return getattr(self._op, name)
 
     def __setattr__(self, name, value):
@@ -1677,11 +1669,8 @@ class OProxyContainer(OProxyBaseWrapper):
         # Monkey-patched containers already have their ops loaded during _load_nested_containers
         # However, we still need to check for leaf monkey patches during refresh
         if hasattr(self, '_monkey_patch'):
-            Log(f"Monkey-patched container '{self.path}' - checking for leaf monkey patches only", status='debug', process='_refresh')
-            Log(f"Container '{self.path}' children before leaf monkey patch refresh: {list(self._children.keys())}", status='debug', process='_refresh')
             # Only refresh leaf monkey patches, don't rebuild the entire children structure
             self._refresh_leaf_monkey_patches()
-            Log(f"Container '{self.path}' children after leaf monkey patch refresh: {list(self._children.keys())}", status='debug', process='_refresh')
             return
 
         stored_data = self._get_stored_container_data()
@@ -1755,46 +1744,36 @@ class OProxyContainer(OProxyBaseWrapper):
         """Refresh monkey patches for existing leaves in a monkey-patched container."""
         stored_data = self._get_stored_container_data()
         if not stored_data:
-            Log(f"No stored data for container '{self.path}' during leaf monkey patch refresh", status='debug', process='_refresh')
             return
 
         ops_data = stored_data.get('ops', {})
-        Log(f"Refreshing leaf monkey patches for container '{self.path}' with {len(ops_data)} stored ops", status='debug', process='_refresh')
 
         for stored_name, op_info in ops_data.items():
             # Handle TDStoreTools.DependDict objects
             if hasattr(op_info, 'get') and hasattr(op_info, 'keys'):  # Detect dict-like (e.g., DependDict)
                 if hasattr(op_info, 'getRaw'):
                     op_info = op_info.getRaw()
-                Log(f"Processing dict-like op_info for '{stored_name}': {type(op_info)}", status='debug', process='_refresh')
             elif not isinstance(op_info, dict):
-                Log(f"Skipping non-dict op_info for '{stored_name}': {type(op_info)}", status='debug', process='_refresh')
                 continue
 
             monkey_patch_data = op_info.get('monkey_patch')
             if not monkey_patch_data:
-                Log(f"No monkey patch data for leaf '{stored_name}'", status='debug', process='_refresh')
                 continue
 
             stored_path = op_info.get('path', '')
-            Log(f"Found monkey patch data for leaf '{stored_name}' with path '{stored_path}': {monkey_patch_data}", status='debug', process='_refresh')
 
             # Find the corresponding leaf in current children
             leaf = None
             for child_name, child in self._children.items():
-                Log(f"Checking child '{child_name}' of type {type(child)}", status='debug', process='_refresh')
                 if isinstance(child, OProxyLeaf) and child._op.path == stored_path:
                     leaf = child
-                    Log(f"Found matching leaf '{child_name}' for stored op '{stored_name}'", status='debug', process='_refresh')
                     break
 
             if not leaf:
-                Log(f"Could not find leaf for stored op '{stored_name}' with path '{stored_path}' in children: {list(self._children.keys())}", status='warning', process='_refresh')
                 continue
 
             # Check if this leaf already has the correct monkey patch
             current_monkey_patch = getattr(leaf, '_monkey_patch', None)
-            Log(f"Current monkey patch on leaf '{leaf.path}': {current_monkey_patch}", status='debug', process='_refresh')
             needs_refresh = (
                 not current_monkey_patch or
                 current_monkey_patch.get('cls') != monkey_patch_data['cls'] or
@@ -1802,38 +1781,27 @@ class OProxyContainer(OProxyBaseWrapper):
                 current_monkey_patch.get('code_hash') != monkey_patch_data.get('code_hash')
             )
 
-            Log(f"Leaf '{leaf.path}' needs refresh: {needs_refresh}", status='debug', process='_refresh')
-
             if needs_refresh:
-                Log(f"Refreshing monkey patch for leaf '{leaf.path}' with '{monkey_patch_data['cls']}'", status='debug', process='_refresh')
                 try:
                     cls_name = monkey_patch_data['cls']
                     dat_path = monkey_patch_data['dat']
                     dat_op = monkey_patch_data.get('dat_op')
                     dat = td.op(dat_path) if dat_path else None
-                    Log(f"Resolving DAT for monkey patch: path='{dat_path}', dat_op={dat_op}", status='debug', process='_refresh')
                     if not (dat and dat.valid) and dat_op and hasattr(dat_op, 'valid') and dat_op.valid:
                         dat = dat_op
-                        Log(f"Using stored dat_op for monkey patch", status='debug', process='_refresh')
 
                     if dat and dat.valid:
-                        Log(f"Extracting class '{cls_name}' from DAT '{dat.path}'", status='debug', process='_refresh')
                         mod_ast = mod('mod_AST')
                         extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat, log=Log)
-                        Log(f"Creating new leaf instance with extracted class", status='debug', process='_refresh')
                         new_leaf = extracted_cls(op=leaf._op, path=leaf.path, parent=self)
                         new_leaf._monkey_patch = monkey_patch_data.copy()
                         if 'code_hash' in monkey_patch_data:
                             new_leaf._monkey_patch['code_hash'] = monkey_patch_data['code_hash']
                         # Replace the leaf in children
                         self._children[child_name] = new_leaf
-                        Log(f"Successfully refreshed monkey patch for leaf '{leaf.path}' with '{cls_name}'", status='info', process='_refresh')
-                    else:
-                        Log(f"Could not resolve DAT for leaf monkey patch '{cls_name}' on '{leaf.path}' - dat={dat}, valid={dat and dat.valid}", status='warning', process='_refresh')
+                        Log(f"Refreshed monkey patch for leaf '{leaf.path}' with '{cls_name}'", status='info', process='_refresh')
                 except Exception as e:
-                    Log(f"Failed to refresh monkey patch for leaf '{leaf.path}': {e}\n{traceback.format_exc()}", status='error', process='_refresh')
-            else:
-                Log(f"Leaf '{leaf.path}' already has correct monkey patch", status='debug', process='_refresh')
+                    Log(f"Failed to refresh monkey patch for leaf '{leaf.path}': {e}", status='error', process='_refresh')
 
     def _refresh_extensions(self, target=None):
         """Load stored extension metadata and re-extract from DATs."""
