@@ -122,16 +122,5 @@ showing storage after _extend()
 <OProxy [TEST:info]> 
 Now going to call the monkey patched container
 
-<OProxy [INFO]> (1280, 720)
- (1000, 1000)
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [DEBUG:_refresh]> Loading nested container 'items' under ''
-<OProxy [INFO:_refresh]> Loading monkey patch container 'items' with 'ResolutionMP'
-<OProxy [DEBUG:_refresh]> Loading nested OP 'op1' from '/project1/myProject/op1'
- Loading nested OP 'op2' from '/project1/myProject/op2'
- Loading nested OP 'op3' from '/project1/myProject/op3'
- Loading nested OP 'op1' from '/project1/myProject/op1'
- Loading nested OP 'op2' from '/project1/myProject/op2'
- Loading nested OP 'op3' from '/project1/myProject/op3'
-<OProxy [INFO:Init]> OProxy root initialized
+<OProxy [INFO]> [1280, 720]
+ [1000, 1000]

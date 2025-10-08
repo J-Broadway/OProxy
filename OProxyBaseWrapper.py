@@ -1523,6 +1523,11 @@ class OProxyContainer(OProxyBaseWrapper):
         if not self.path:
             return
 
+        # Monkey-patched containers already have their ops loaded during _load_nested_containers
+        # Skip refreshing ops to prevent double-loading
+        if hasattr(self, '_monkey_patch'):
+            return
+
         stored_data = self._get_stored_container_data()
         if not stored_data:
             return
