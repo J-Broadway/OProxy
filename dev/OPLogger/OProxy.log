@@ -1,9 +1,14 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: []
+<OProxy [DEBUG:_clear]> Clearing root extensions: ['myFunc', 'inlineClass']
+<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'myFunc'
+<OProxy [INFO:_remove]> Extension 'inlineClass' and all nested extensions removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'inlineClass'
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
+<OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:info]> 
 Adding containe opr._add('items', tf.mvs) 
@@ -18,7 +23,8 @@ Adding containe opr._add('items', tf.mvs)
  Validating OP 3/3: op3
  Validated OP: op3 (path: /project1/myProject/op3)
  Creating container with path 'items'
- Adding 3 OPs as leaves to container 'items'
+<OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
+<OProxy [DEBUG:_add]> Adding 3 OPs as leaves to container 'items'
  Creating leaf for OP 'op1' with path 'items.op1'
  Creating leaf for OP 'op2' with path 'items.op2'
  Creating leaf for OP 'op3' with path 'items.op3'
@@ -75,6 +81,7 @@ verifying that MonkeyPatch path is correct
 <OProxy [TEST:info]> 
  now running opr._extend('items', cls='ResolutionMP', dat='extensions_for_tests', monkey_patch=True)
 
+<OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
 <OProxy [INFO:_extend]> Monkey-patched 'items' with 'ResolutionMP'
 <OProxy [TEST:info]> 
 showing storage after _extend()
@@ -113,7 +120,8 @@ showing storage after _extend()
             "extensions": {},
             "monkey_patch": {
                 "cls": "ResolutionMP",
-                "dat": "/project1/myProject/extensions_for_tests"
+                "dat": "/project1/myProject/extensions_for_tests",
+                "code_hash": "97796fe96bad3e19b61759e97d15afe25822a8e3c3564f92be11498e371f1653"
             }
         }
     },
@@ -122,5 +130,5 @@ showing storage after _extend()
 <OProxy [TEST:info]> 
 Now going to call the monkey patched container
 
-<OProxy [INFO]> [1280, 720]
- [1000, 1000]
+<OProxy [INFO]> (1280, 720)
+ (1000, 1000)

@@ -8,6 +8,7 @@ import inspect
 import json
 import keyword
 from utils import td_isinstance
+import hashlib
 
 ''' LLM Notes:
 Comments that begin with #! are meant to be updated dynamically when incongruencies
@@ -236,7 +237,7 @@ class OProxyLeaf(OProxyBaseWrapper):
         """Refresh leaf - check for name changes and refresh extensions"""
         try:
             # Check for name changes and update parent's children dictionary if needed
-            if self._parent:
+            if self._parent is not None:
                 # Find current key for this leaf in parent's children
                 current_key = None
                 for child_name, child in self._parent._children.items():
@@ -256,7 +257,7 @@ class OProxyLeaf(OProxyBaseWrapper):
                     children.update(zip(keys, values))
                     # Update path to reflect new name
                     self._path = f"{self._parent.path}.{self._op.name}" if self._parent.path else self._op.name
-                    if self._parent:
+                    if self._parent is not None:
                         self._find_root()._update_storage()
 
             self._refresh_extensions(target)
@@ -598,7 +599,7 @@ class OProxyExtension(OProxyBaseWrapper):
                 continue
 
         # Now remove this extension from its parent
-        if self._parent:
+        if self._parent is not None:
             # Remove from parent's extension registry
             if hasattr(self._parent, '_extensions') and hasattr(self, '_extension_name'):
                 if self._extension_name in self._parent._extensions:
@@ -1000,6 +1001,7 @@ class OProxyContainer(OProxyBaseWrapper):
 
     def __init__(self, ownerComp=None, path="", parent=None, ops=None, root=False):
         super().__init__(path, parent)
+        Log(f"Initializing OProxyContainer '{path}' with parent: {parent}, root: {root}", status='debug', process='__init__')
         self._children = {}  # name -> OProxyBaseWrapper (leaf or sub-container)
         self._ownerComp = ownerComp  # Only root has this for storage
         self._is_root = root  # Explicit root flag to avoid recursion issues
@@ -1445,6 +1447,93 @@ class OProxyContainer(OProxyBaseWrapper):
             self._refresh_ops(target)
             self._refresh_extensions(target)
 
+            Log(f"Refreshing container '{self.path}' - parent: {self._parent}, is_root: {self.is_root}", status='debug', process='_refresh')
+
+            # Check for monkey patch data and re-apply if needed
+            stored_data = self._get_stored_container_data()
+            if stored_data and 'monkey_patch' in stored_data:
+                monkey_patch_data = stored_data['monkey_patch']
+                cls_name = monkey_patch_data['cls']
+                dat_path = monkey_patch_data['dat']
+
+                dat = td.op(dat_path)
+                current_hash = None
+                if dat and dat.valid:
+                    import hashlib
+                    current_hash = hashlib.sha256(dat.text.encode('utf-8')).hexdigest()
+
+                # Check if we already have this monkey patch applied
+                current_monkey_patch = getattr(self, '_monkey_patch', None)
+                needs_refresh = (
+                    not current_monkey_patch or
+                    current_monkey_patch.get('cls') != cls_name or
+                    current_monkey_patch.get('dat') != dat_path or
+                    current_monkey_patch.get('code_hash') != current_hash
+                )
+
+                if needs_refresh:
+                    Log(f"Starting monkey patch refresh for '{self.path}' - current parent: {self._parent}, is_root: {self.is_root}", status='debug', process='_refresh')
+                    try:
+                        mod_ast = mod('mod_AST')
+                        extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
+                        Log(f"Extracted class: {extracted_cls.__name__}", status='debug', process='_refresh')
+
+                        if self._parent is not None:
+                            Log(f"Has parent: {self._parent.path if hasattr(self._parent, 'path') else 'root'}", status='debug', process='_refresh')
+                            container_name = None
+                            for name, child in self._parent._children.items():
+                                if child is self:
+                                    container_name = name
+                                    break
+                            Log(f"Found container_name: {container_name}", status='debug', process='_refresh')
+
+                            if container_name:
+                                Log(f"Creating new_container with parent: {self._parent}", status='debug', process='_refresh')
+                                new_container = extracted_cls(ownerComp=self._ownerComp, path=self._path, parent=self._parent, ops=None, root=self._is_root)
+                                new_container._monkey_patch = monkey_patch_data.copy()
+                                if current_hash:
+                                    new_container._monkey_patch['code_hash'] = current_hash
+                                new_container._children = self._children
+                                new_container._extensions = getattr(self, '_extensions', {})
+                                self._parent._children[container_name] = new_container
+                                for child in new_container._children.values():
+                                    child._parent = new_container
+                                for ext in new_container._extensions.values():
+                                    ext._parent = new_container
+
+                                Log(f"New container created - its parent: {new_container._parent}", status='debug', process='_refresh')
+
+                                Log(f"Refreshed monkey patch for container '{self.path}' with '{cls_name}' from '{dat_path}'", status='info', process='_refresh')
+
+                                new_container._refresh(target)
+                                return
+                            else:
+                                Log(f"Could not find container '{self.path}' in parent for monkey patch refresh", status='warning', process='_refresh')
+                        else:
+                            Log(f"No parent - proceeding with class change", status='debug', process='_refresh')
+                            old_children = self._children
+                            old_extensions = self._extensions
+                            self.__class__ = extracted_cls
+                            Log(f"Changed class to {self.__class__.__name__}", status='debug', process='_refresh')
+                            self.__init__(ownerComp=self._ownerComp, path=self._path, parent=self._parent, ops=None, root=self._is_root)
+                            Log(f"After __init__ - parent: {self._parent}, is_root: {self.is_root}", status='debug', process='_refresh')
+                            self._children = old_children
+                            self._extensions = old_extensions
+                            self._monkey_patch = monkey_patch_data.copy()
+                            if current_hash:
+                                self._monkey_patch['code_hash'] = current_hash
+                            for child in self._children.values():
+                                child._parent = self
+                            for ext in self._extensions.values():
+                                ext._parent = self
+                            Log(f"Refreshed monkey patch for container '{self.path}' (no parent) by changing class to '{cls_name}' from '{dat_path}'", status='info', process='_refresh')
+
+                            self._refresh(target)
+                            return
+
+                    except Exception as e:
+                        Log(f"Failed to refresh monkey patch for container '{self.path}': {e}", status='error', process='_refresh')
+
             # For root containers, load children from storage first
             if self.is_root and hasattr(self, 'OProxies'):
                 children_data = self.OProxies.get('children', {})
@@ -1543,11 +1632,13 @@ class OProxyContainer(OProxyBaseWrapper):
                 op_path = op_info
                 stored_op = None
                 op_extensions = {}
+                monkey_patch_data = None
             else:
                 # New format (object with path, raw OP, and extensions)
                 op_path = op_info.get('path', '')
                 stored_op = op_info.get('op')  # Raw OP object for name change detection
                 op_extensions = op_info.get('extensions', {})
+                monkey_patch_data = op_info.get('monkey_patch')
 
             Log(f"Loading nested OP '{stored_key}' from '{op_path}'", status='debug', process='_refresh')
 
@@ -1567,7 +1658,18 @@ class OProxyContainer(OProxyBaseWrapper):
 
                 # Add with current name (which may be different from stored_key)
                 leaf_path = f"{self.path}.{current_name}"
-                leaf = OProxyLeaf(op, path=leaf_path, parent=self)
+
+                # Check for monkey patch
+                if monkey_patch_data:
+                    cls_name = monkey_patch_data['cls']
+                    dat_path = monkey_patch_data['dat']
+                    mod_ast = mod('mod_AST')
+                    extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
+                    leaf = extracted_cls(op=op, path=leaf_path, parent=self)
+                    leaf._monkey_patch = monkey_patch_data
+                    Log(f"Refreshed monkey patch leaf '{current_name}' with '{cls_name}' from '{dat_path}'", status='info', process='_refresh')
+                else:
+                    leaf = OProxyLeaf(op, path=leaf_path, parent=self)
 
                 # Load extensions onto the leaf
                 if op_extensions:
@@ -1825,7 +1927,9 @@ class OProxyContainer(OProxyBaseWrapper):
                 for ext in new_instance._extensions.values():
                     ext._parent = new_instance
                 dat_op = td_isinstance(dat, 'textdat', allow_string=True)
-                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path}
+                import hashlib
+                code_hash = hashlib.sha256(dat_op.text.encode('utf-8')).hexdigest()
+                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path, 'code_hash': code_hash}
                 self._children[attr_name] = new_instance
             elif isinstance(existing, OProxyLeaf):
                 if not issubclass(extracted_cls, OProxyLeaf):
@@ -1835,7 +1939,9 @@ class OProxyContainer(OProxyBaseWrapper):
                 for ext in new_instance._extensions.values():
                     ext._parent = new_instance
                 dat_op = td_isinstance(dat, 'textdat', allow_string=True)
-                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path}
+                import hashlib
+                code_hash = hashlib.sha256(dat_op.text.encode('utf-8')).hexdigest()
+                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path, 'code_hash': code_hash}
                 self._children[attr_name] = new_instance
 
             root = self._find_root()
