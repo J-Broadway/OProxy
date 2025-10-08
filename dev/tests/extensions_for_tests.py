@@ -44,7 +44,7 @@ class Wrapper:
 					if not td_isinstance(self._leaf._op, 'top'):
 						log("Not a TOP operator", status='error')
 						raise ValueError("resolution() only for TOPs")
-					return (self._leaf._op.width, self._leaf._op.height)
+					return [self._leaf._op.width, self._leaf._op.height]
 
 			# Return the proxy instead of the raw leaf
 			return ResolutionProxy(leaf)
@@ -59,6 +59,6 @@ class Wrapper:
 				'path': self._op.path,
 				'parent_path': self._op.parent().path if self._op.parent() else None,
 				'op_type': self._op.OPType,
-				'new_data': 'hello world'
+				'new_data_updated': 'hello world'
 			}
 			return info

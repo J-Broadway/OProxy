@@ -1774,11 +1774,23 @@ class OProxyContainer(OProxyBaseWrapper):
 
             # Check if this leaf already has the correct monkey patch
             current_monkey_patch = getattr(leaf, '_monkey_patch', None)
+
+            # Calculate current hash from DAT content
+            current_hash = None
+            dat_path = monkey_patch_data['dat']
+            dat_op = monkey_patch_data.get('dat_op')
+            dat = td.op(dat_path) if dat_path else None
+            if not (dat and dat.valid) and dat_op and hasattr(dat_op, 'valid') and dat_op.valid:
+                dat = dat_op
+            if dat and dat.valid:
+                import hashlib
+                current_hash = hashlib.sha256(dat.text.encode('utf-8')).hexdigest()
+
             needs_refresh = (
                 not current_monkey_patch or
                 current_monkey_patch.get('cls') != monkey_patch_data['cls'] or
                 current_monkey_patch.get('dat') != monkey_patch_data['dat'] or
-                current_monkey_patch.get('code_hash') != monkey_patch_data.get('code_hash')
+                current_monkey_patch.get('code_hash') != current_hash
             )
 
             if needs_refresh:
@@ -1795,8 +1807,8 @@ class OProxyContainer(OProxyBaseWrapper):
                         extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat, log=Log)
                         new_leaf = extracted_cls(op=leaf._op, path=leaf.path, parent=self)
                         new_leaf._monkey_patch = monkey_patch_data.copy()
-                        if 'code_hash' in monkey_patch_data:
-                            new_leaf._monkey_patch['code_hash'] = monkey_patch_data['code_hash']
+                        if current_hash:
+                            new_leaf._monkey_patch['code_hash'] = current_hash
                         # Replace the leaf in children
                         self._children[child_name] = new_leaf
                         Log(f"Refreshed monkey patch for leaf '{leaf.path}' with '{cls_name}'", status='info', process='_refresh')

@@ -121,7 +121,7 @@ showing storage after _extend()
             "monkey_patch": {
                 "cls": "ResolutionMP",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006",
+                "code_hash": "907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -136,9 +136,9 @@ showing storage after _extend()
 Now going to call the monkey patched container
 
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
-<OProxy [INFO]> (1280, 720)
+<OProxy [INFO]> [1280, 720]
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op2') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
-<OProxy [INFO]> (1000, 1000)
+<OProxy [INFO]> [1000, 1000]
 <OProxy [TEST:info]> 
 Now testing storage persistence after container is re-initialized
 
@@ -158,9 +158,9 @@ Now testing storage persistence after container is re-initialized
 Calling "resolution()" on monkey patched containers
 
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
-<OProxy [INFO]> (1280, 720)
+<OProxy [INFO]> [1280, 720]
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op2') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
-<OProxy [INFO]> (1000, 1000)
+<OProxy [INFO]> [1000, 1000]
 <OProxy [TEST:info]> 
 Now testing a monkey patched OPLeaf
 
@@ -186,7 +186,7 @@ checking storage after adding helloWorld monkey patch
                     "monkey_patch": {
                         "cls": "helloWorld",
                         "dat": "/project1/myProject/extensions_for_tests",
-                        "code_hash": "5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006",
+                        "code_hash": "907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb",
                         "dat_op": {
                             "name": "extensions_for_tests",
                             "type": "textDAT",
@@ -215,7 +215,7 @@ checking storage after adding helloWorld monkey patch
             "monkey_patch": {
                 "cls": "ResolutionMP",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006",
+                "code_hash": "907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -230,11 +230,11 @@ checking storage after adding helloWorld monkey patch
 Calling "helloWorld()" on monkey patched OPLeaf
 
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path 'items.op1'
-<OProxy [INFO]> {'name': 'op1', 'path': '/project1/myProject/op1', 'parent_path': '/project1/myProject', 'op_type': 'moviefileinTOP', 'new_data': 'hello world'}
+<OProxy [INFO]> {'name': 'op1', 'path': '/project1/myProject/op1', 'parent_path': '/project1/myProject', 'op_type': 'moviefileinTOP', 'new_data_updated': 'hello world'}
 <OProxy [TEST:info]> 
 Now going to run "monkey_patch_outside_tests" to make sure persistence works
 
-<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '5331cc20f4d7e4459a03385939de75858ed140f365fdcd3fd791eeac823ec006', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
+<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
 <OProxy [INFO:__call__]> Restored monkey patch for leaf 'op1' with 'helloWorld'
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
  OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
