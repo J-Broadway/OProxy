@@ -1,8 +1,12 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: []
+<OProxy [DEBUG:_clear]> Clearing root extensions: ['myFunc', 'inlineClass']
+<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'myFunc'
+<OProxy [INFO:_remove]> Extension 'inlineClass' and all nested extensions removed successfully
+<OProxy [DEBUG:_clear]> Removed root extension 'inlineClass'
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
+ Clearing in-memory hierarchy with 0 containers
  Reloading empty hierarchy
 <OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
 <OProxy [INFO:_clear]> _clear operation completed
@@ -77,35 +81,6 @@ verifying that MonkeyPatch path is correct
 <OProxy [TEST:info]> 
  now running opr._extend('items', cls='ResolutionMP', dat='extensions_for_tests', monkey_patch=True)
 
-<OProxy [DEBUG:mod_AST:TempDAT]> Temp DAT contents for ResolutionMP:
-td_isinstance = mod('OProxy/utils').td_isinstance
-log = op('OProxy').Log
-mp = mod('OProxy/MonkeyPatch')
-class ResolutionMP(mp.OProxyContainer):
-	"""Monkey-patched container that adds resolution() to leaves."""
-
-	def __call__(self, identifier, **kwargs):
-		# Call parent's __call__ to get the original OProxyLeaf
-		leaf = super().__call__(identifier, **kwargs)
-
-		# Create a proxy wrapper to add custom methods to the leaf
-		class ResolutionProxy:
-			def __init__(self, leaf):
-				self._leaf = leaf  # Store the original leaf
-
-			def __getattr__(self, name):
-				# Delegate all other attribute access to the original leaf
-				return getattr(self._leaf, name)
-
-			def resolution(self):
-				# Custom method: Check if the OP is a TOP, then return resolution
-				if not td_isinstance(self._leaf._op, 'top'):
-					log("Not a TOP operator", status='error')
-					raise ValueError("resolution() only for TOPs")
-				return (self._leaf._op.width, self._leaf._op.height)
-
-		# Return the proxy instead of the raw leaf
-		return ResolutionProxy(leaf)
 <OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
 <OProxy [INFO:_extend]> Monkey-patched 'items' with 'ResolutionMP'
 <OProxy [TEST:info]> 
@@ -170,41 +145,12 @@ Now testing storage persistence after container is re-initialized
  Storage already in new format, no migration needed
 <OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
  Loading nested container 'items' under ''
-<OProxy [DEBUG:mod_AST:TempDAT]> Temp DAT contents for ResolutionMP:
-td_isinstance = mod('OProxy/utils').td_isinstance
-log = op('OProxy').Log
-mp = mod('OProxy/MonkeyPatch')
-class ResolutionMP(mp.OProxyContainer):
-	"""Monkey-patched container that adds resolution() to leaves."""
-
-	def __call__(self, identifier, **kwargs):
-		# Call parent's __call__ to get the original OProxyLeaf
-		leaf = super().__call__(identifier, **kwargs)
-
-		# Create a proxy wrapper to add custom methods to the leaf
-		class ResolutionProxy:
-			def __init__(self, leaf):
-				self._leaf = leaf  # Store the original leaf
-
-			def __getattr__(self, name):
-				# Delegate all other attribute access to the original leaf
-				return getattr(self._leaf, name)
-
-			def resolution(self):
-				# Custom method: Check if the OP is a TOP, then return resolution
-				if not td_isinstance(self._leaf._op, 'top'):
-					log("Not a TOP operator", status='error')
-					raise ValueError("resolution() only for TOPs")
-				return (self._leaf._op.width, self._leaf._op.height)
-
-		# Return the proxy instead of the raw leaf
-		return ResolutionProxy(leaf)
 <OProxy [DEBUG:__init__]> Initializing OProxyContainer '.items' with parent: OProxyContainer 'root' [], root: False
 <OProxy [INFO:_refresh]> Loading monkey patch container 'items' with 'ResolutionMP'
-<OProxy [WARNING:_refresh]> Invalid op_info type for 'op1': DependDict, skipping
- Invalid op_info type for 'op2': DependDict, skipping
- Invalid op_info type for 'op3': DependDict, skipping
-<OProxy [DEBUG:_refresh]> Refreshing container '.items' - parent: OProxyContainer 'root' [], is_root: False
+<OProxy [DEBUG:_refresh]> Loading nested OP 'op1' from '/project1/myProject/op1'
+ Loading nested OP 'op2' from '/project1/myProject/op2'
+ Loading nested OP 'op3' from '/project1/myProject/op3'
+ Refreshing container '.items' - parent: OProxyContainer 'root' [], is_root: False
 <OProxy [INFO:Init]> OProxy root initialized
 <OProxy [TEST:info]> 
 Calling "resolution()" on monkey patched containers
@@ -214,23 +160,6 @@ Calling "resolution()" on monkey patched containers
 <OProxy [TEST:info]> 
 Now testing a monkey patched OPLeaf
 
-<OProxy [DEBUG:mod_AST:TempDAT]> Temp DAT contents for helloWorld:
-td_isinstance = mod('OProxy/utils').td_isinstance
-log = op('OProxy').Log
-mp = mod('OProxy/MonkeyPatch')
-class helloWorld(mp.OProxyLeaf):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-
-	def helloWorld(self):
-		info = {
-			'name': self._op.name,
-			'path': self._op.path,
-			'parent_path': self._op.parent().path if self._op.parent() else None,
-			'op_type': self._op.OPType,
-			'new_data': 'hello world'
-		}
-		return info
 <OProxy [INFO:_extend]> Monkey-patched 'op1' with 'helloWorld'
 <OProxy [TEST:info]> 
 checking storage after adding helloWorld monkey patch
@@ -298,8 +227,8 @@ Calling "helloWorld()" on monkey patched OPLeaf
 <OProxy [TEST:info]> 
 Now going to run "monkey_patch_outside_tests" to make sure persistence works
 
-<OProxy [INFO]> File "/project1/myProject/monkey_patch_outside_tests", line 3
-  File "/project1/myProject/_oproxy_temp_mod_ast", line 9, in __call__
-  File "/project1/myProject/OProxy/OProxyBaseWrapper", line 1345, in __call__
-KeyError: "No OP named 'op1' in this container"
+<OProxy [INFO]> File "/project1/myProject/monkey_patch_outside_tests", line 4
+  File "</project1/myProject/monkey_patch_outside_tests>", line 18, in __getattr__
+  File "/project1/myProject/OProxy/OProxyBaseWrapper", line 348, in __getattr__
+td.tdAttributeError: 'td.moviefileinTOP' object has no attribute 'helloWorld' Context:/project1/myProject/op1
 Results of run operation resulted in exception.

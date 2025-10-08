@@ -1806,11 +1806,13 @@ class OProxyContainer(OProxyBaseWrapper):
                     stored_op = None
                     op_extensions = {}
                     monkey_patch_data = None
-                elif isinstance(op_info, dict):
+                elif isinstance(op_info, dict) or (hasattr(op_info, 'get') and hasattr(op_info, 'keys')):
+                    if hasattr(op_info, 'getRaw'):
+                        op_info = op_info.getRaw()
                     op_path = op_info.get('path', '')
-                    stored_op = op_info.get('op')
+                    stored_op = op_info.get('op', None)
                     op_extensions = op_info.get('extensions', {})
-                    monkey_patch_data = op_info.get('monkey_patch')
+                    monkey_patch_data = op_info.get('monkey_patch', None)
                 else:
                     Log(f"Invalid op_info type for '{op_name}': {type(op_info).__name__}, skipping", status='warning', process='_refresh')
                     continue
@@ -1829,7 +1831,7 @@ class OProxyContainer(OProxyBaseWrapper):
                         Log(f"OP name changed from '{op_name}' to '{current_name}', updating mapping", status='info', process='_refresh')
                         actual_key = current_name
                     else:
-                        actual_key = stored_key
+                        actual_key = op_name
 
                     leaf_path = f"{container_path}.{actual_key}"
                     if monkey_patch_data:

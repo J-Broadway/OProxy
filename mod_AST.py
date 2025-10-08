@@ -181,20 +181,26 @@ def Main(cls=None, func=None, source_dat=None, log=None):
         defs = defs[::-1]
         prepended = '\n'.join(defs) + '\n' + block_text
 
-        # Then proceed with temp DAT
+        # Proceed with exec instead of temp DAT
         source_op = op(source_dat) if isinstance(source_dat, str) else source_dat
-        temp_parent = source_op.parent()
-        temp_dat = temp_parent.create(textDAT, '_oproxy_temp_mod_ast')
-        temp_dat.text = prepended
-        log(f"Temp DAT contents for {target_name}:\n{prepended}", status='debug', process='mod_AST:TempDAT')
-        temp_dat.cook(force=True)
+        context_op = source_op.parent()
 
-        # Load via mod
-        mod_temp = mod(temp_dat)
-        obj = getattr(mod_temp, target_name)
+        def custom_op(path):
+            return context_op.op(path)
 
-        # Clean up
-        temp_dat.destroy()
+        def custom_mod(path):
+            dat = custom_op(path)
+            if dat:
+                return mod(dat)
+            else:
+                raise ImportError(f"Module not found: {path}")
+
+        globals_dict = globals().copy()
+        globals_dict['op'] = custom_op
+        globals_dict['mod'] = custom_mod
+        locals_dict = {}
+        exec(prepended, globals_dict, locals_dict)
+        obj = locals_dict[target_name]
 
         if isinstance(obj, type) or callable(obj):
             return obj
