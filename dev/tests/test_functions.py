@@ -57,6 +57,7 @@ def remove_created_at(storage):
 				remove_created_at(item)
 
 	return storage
+	
 def testCheck(expected, test_name, msg):
 	"""Initially written for _refresh() tests"""
 	if test_name == 'storage':

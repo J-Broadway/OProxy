@@ -26,7 +26,7 @@ class root(OProxyContainer):
 
     def __init__(self, ownerComp):
         super().__init__(ownerComp=ownerComp, path="", parent=None, root=True)
-
+        self.Hi = 'hello world'
         # Initialize TouchDesigner storage using StorageManager
         # 
         storedItems = [

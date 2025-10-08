@@ -184,6 +184,7 @@ The extension system provides detailed error messages for common issues:
 - Functions with 'self' are bound to the container automatically
 - Extensions are stored in the container's internal registry for management
 - Storage is updated automatically when extensions are added
+- mod_AST extracts code blocks and resolves simple undefined variables by prepending their definitions, but this may not work reliably with TouchDesigner-specific functions like mod() due to execution context. For such cases, use wrapper classes as described in best practices.
 
 ## API Compatibility
 

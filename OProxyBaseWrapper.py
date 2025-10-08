@@ -314,7 +314,7 @@ class OProxyLeaf(OProxyBaseWrapper):
                     actual_obj = mod_ast.Main(
                         cls=metadata['cls'],
                         func=metadata['func'],
-                        op=dat,  # Use resolved dat
+                        source_dat=dat,  # Use resolved dat
                         log=Log
                     )
 
@@ -395,9 +395,11 @@ class OProxyLeaf(OProxyBaseWrapper):
 
             # Extract the actual object
             try:
-                actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+                actual_obj = mod_ast.Main(cls=cls, func=func, source_dat=dat, log=Log)
             except Exception as e:
-                raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+                dat_op = dat if isinstance(dat, td.OP) else op(dat)
+                path_str = dat_op.path if dat_op is not None else dat
+                raise RuntimeError(f"Failed to extract from DAT {path_str}: {e}") from e
 
             # Prepare metadata
             metadata = {
@@ -470,6 +472,10 @@ class OProxyLeaf(OProxyBaseWrapper):
             output = json.dumps(serialized, indent=4)
             Log(f"Storage branch for leaf '{self.path or 'root'}'\n\"{self.path or 'root'}\" : {output}", status='info', process='_storage')
             return output
+
+    @property
+    def op(self):
+        return self._op
 
 
 class OProxyExtension(OProxyBaseWrapper):
@@ -665,7 +671,7 @@ class OProxyExtension(OProxyBaseWrapper):
             actual_obj = mod_ast.Main(
                 cls=metadata['cls'],
                 func=metadata['func'],
-                op=dat,
+                source_dat=dat,
                 log=Log
             )
 
@@ -716,7 +722,7 @@ class OProxyExtension(OProxyBaseWrapper):
                     actual_obj = mod_ast.Main(
                         cls=metadata.get('cls'),
                         func=metadata.get('func'),
-                        op=dat,
+                        source_dat=dat,
                         log=Log
                     )
 
@@ -871,9 +877,11 @@ class OProxyExtension(OProxyBaseWrapper):
 
             # Extract the actual object
             try:
-                actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+                actual_obj = mod_ast.Main(cls=cls, func=func, source_dat=dat, log=Log)
             except Exception as e:
-                raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+                dat_op = dat if isinstance(dat, td.OP) else op(dat)
+                path_str = dat_op.path if dat_op is not None else dat
+                raise RuntimeError(f"Failed to extract from DAT {path_str}: {e}") from e
 
             # Prepare metadata
             metadata = {
@@ -1596,7 +1604,7 @@ class OProxyContainer(OProxyBaseWrapper):
                     actual_obj = mod_ast.Main(
                         cls=metadata['cls'],
                         func=metadata['func'],
-                        op=dat,  # Use resolved dat
+                        source_dat=dat,  # Use resolved dat
                         log=Log
                     )
 
@@ -1768,9 +1776,11 @@ class OProxyContainer(OProxyBaseWrapper):
 
             mod_ast = mod('mod_AST')
             try:
-                extracted_cls = mod_ast.Main(cls=cls, func=None, op=dat, log=Log)
+                extracted_cls = mod_ast.Main(cls=cls, func=None, source_dat=dat, log=Log)
             except Exception as e:
-                raise RuntimeError(f"Failed to extract class '{cls}' from DAT {dat.path}: {e}") from e
+                dat_op = dat if isinstance(dat, td.OP) else op(dat)
+                path_str = dat_op.path if dat_op is not None else dat
+                raise RuntimeError(f"Failed to extract class '{cls}' from DAT {path_str}: {e}") from e
             if not isinstance(extracted_cls, type):
                 raise TypeError(f"Extracted '{cls}' is not a class")
 
@@ -1824,9 +1834,11 @@ class OProxyContainer(OProxyBaseWrapper):
 
             # Extract the actual object
             try:
-                actual_obj = mod_ast.Main(cls=cls, func=func, op=dat, log=Log)
+                actual_obj = mod_ast.Main(cls=cls, func=func, source_dat=dat, log=Log)
             except Exception as e:
-                raise RuntimeError(f"Failed to extract from DAT {dat.path}: {e}") from e
+                dat_op = dat if isinstance(dat, td.OP) else op(dat)
+                path_str = dat_op.path if dat_op is not None else dat
+                raise RuntimeError(f"Failed to extract from DAT {path_str}: {e}") from e
 
             # Prepare metadata
             metadata = {

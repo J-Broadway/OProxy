@@ -82,7 +82,7 @@ def extract_block_text(code_text, target_name, target_type=None):
         block_lines = lines[decorator_start:end]
         return '\n'.join(block_lines)
 
-def Main(cls=None, func=None, op=None, log=None):
+def Main(cls=None, func=None, source_dat=None, log=None):
     """
     Dynamically extracts, compiles, and executes a specific class or function from a Text DAT without
     running the entire DAT then returns the resulting class type or function object without immediate execution.
@@ -90,7 +90,7 @@ def Main(cls=None, func=None, op=None, log=None):
     Args:
         cls (str, optional): The name of the class to extract; mutually exclusive with func.
         func (str, optional): The name of the function to extract; mutually exclusive with cls.
-        op (td.textDAT or str, optional): The Text DAT operator or its path string containing the source code;
+        source_dat (td.textDAT or str, optional): The Text DAT operator or its path string containing the source code;
                                          defaults to last arg if positional.
         log (callable, optional): log function to use for error reporting; defaults to OPLogger.
     
@@ -126,43 +126,81 @@ def Main(cls=None, func=None, op=None, log=None):
 
     # Type checking and handling for op using td_isinstance
     try:
-        op = td_isinstance(op, 'textdat', allow_string=True)
+        source_dat = td_isinstance(source_dat, 'textdat', allow_string=True)
     except (TypeError, ValueError) as e:
-        raise ValueError(f"Provided op must be a td.textDAT or a string path to one: {e}")
+        raise ValueError(f"Provided source_dat must be a td.textDAT or a string path to one: {e}")
 
     # Get the code text
-    code_text = op.text
+    code_text = source_dat.text
     block_text = extract_block_text(code_text, target_name, target_type)
+
+    # De-indent the block to make it top-level
+    lines = block_text.splitlines()
+    if lines:
+        min_indent = min(len(line) - len(line.lstrip()) for line in lines if line.strip())
+        block_text = '\n'.join(line[min_indent:] if line.strip() else line for line in lines)
+
     try:
-        # Parse block to find undefined names
-        block_tree = ast.parse(block_text)
-        undefined = set()
-        for node in ast.walk(block_tree):
-            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
-                undefined.add(node.id)
+        # Find the target node and collect outer assignments
+        tree = ast.parse(code_text)
+        target_node = None
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name == target_name:
+                target_node = node
+                break
+        if not target_node:
+            raise ValueError(f"Target '{target_name}' not found")
 
-        # Scan full code for definitions of undefined names
-        full_tree = ast.parse(code_text)
-        defs = {}
-        for node in ast.walk(full_tree):
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id in undefined:
-                        defs[target.id] = ast.unparse(node)
+        # Collect assignments from outer scopes
+        defs = []
+        current = target_node
+        while current:
+            if isinstance(current, (ast.ClassDef, ast.FunctionDef, ast.Module)):
+                for body_node in current.body:
+                    if isinstance(body_node, ast.Assign) and body_node != target_node:
+                        defs.append(ast.unparse(body_node))
+            current = getattr(current, 'parent', None)  # Need to add parent links
 
-        # Prepend definitions to block_text
-        prepended = '\n'.join(defs.values()) + '\n' + block_text
+        # To add parent links, need to walk with parent setting
+        # First, set parents
+        for node in ast.walk(tree):
+            for child in ast.iter_child_nodes(node):
+                child.parent = node
 
-        # Compile and exec
-        compiled = compile(prepended, '<string>', 'exec')
-        exec(compiled)
-        obj = locals()[target_name]
+        # Now collect
+        defs = []
+        current = target_node
+        while current and not isinstance(current, ast.Module):
+            if isinstance(current, ast.ClassDef):
+                for body_node in current.body:
+                    if isinstance(body_node, ast.Assign) and body_node.lineno < target_node.lineno:
+                        defs.append(ast.unparse(body_node))
+            current = current.parent
+
+        # Prepend in reverse (outer to inner)
+        defs = defs[::-1]
+        prepended = '\n'.join(defs) + '\n' + block_text
+
+        # Then proceed with temp DAT
+        source_op = op(source_dat) if isinstance(source_dat, str) else source_dat
+        temp_parent = source_op.parent()
+        temp_dat = temp_parent.create(textDAT, '_oproxy_temp_mod_ast')
+        temp_dat.text = prepended
+        temp_dat.cook(force=True)
+
+        # Load via mod
+        mod_temp = mod(temp_dat)
+        obj = getattr(mod_temp, target_name)
+
+        # Clean up
+        temp_dat.destroy()
+
         if isinstance(obj, type) or callable(obj):
-            return obj  # Return class type or function for OProxy management
+            return obj
         else:
             raise ValueError(f"Extracted '{target_name}' is {type(obj).__name__}, neither a class nor a function")
     except Exception as e:
-        error_msg = f"Error executing block for '{target_name}' from {op.path}: {str(e)} at line {e.lineno if hasattr(e, 'lineno') else 'unknown'}"
+        error_msg = f"Error executing block for '{target_name}' from {source_dat.path}: {str(e)} at line {e.lineno if hasattr(e, 'lineno') else 'unknown'}"
         if log:
             log(error_msg, status='error', process='mod_AST:Execute')
         else:
