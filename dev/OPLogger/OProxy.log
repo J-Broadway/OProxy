@@ -1,7 +1,5 @@
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
- Extension 'inlineClass' and all nested extensions removed successfully
-<OProxy [INFO:_clear]> _clear operation completed
+ _clear operation completed
 <OProxy [TEST:info]> 
 Adding containe opr._add('items', tf.mvs) 
 

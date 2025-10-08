@@ -17,7 +17,6 @@ class Logger:
 		# State management deque to track last log call for grouping
 		self.state_history = deque(maxlen=1)  # Only need last state
 		self.in_multi_group = False  # Track if we're in a multi-message group
-		self.debug_enabled = True  # Default to enabled for backward compatibility
 
 	def _get_log_file_path(self):
 		"""Get the full path to the log file and ensure directory exists"""
@@ -110,7 +109,7 @@ class Logger:
 			msg = ''
 
 		# Skip debug messages if debug logging is disabled
-		if status.upper() == 'DEBUG' and not self.debug_enabled:
+		if status.upper() == 'DEBUG' and not self.ownerComp.par.Debug:
 			return
 
 		# Automatically append traceback if this is an error and inside an except block
@@ -172,6 +171,4 @@ class root(Logger):
 			# Dynamically generate self.pars based off name
 			setattr(self, i.name.capitalize(), i)
 
-			if i.name == 'Debug':
-				self.debug_enabled = bool(i.val)
 			
