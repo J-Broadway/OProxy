@@ -41,3 +41,4 @@ try:
 except Exception as e:
 	log(e)
 
+tf.info('extension persistence working thus far!')
