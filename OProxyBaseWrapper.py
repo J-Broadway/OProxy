@@ -348,10 +348,12 @@ class OProxyLeaf(OProxyBaseWrapper):
         return getattr(self._op, name)
 
     def __setattr__(self, name, value):
-        if name.startswith('_') or name == '_op':
+        if name.startswith('_'):
             super().__setattr__(name, value)
-        else:
+        elif hasattr(self._op, name):
             setattr(self._op, name, value)
+        else:
+            super().__setattr__(name, value)
 
     def __str__(self):
         return str(self._op)
@@ -1456,7 +1458,10 @@ class OProxyContainer(OProxyBaseWrapper):
                 cls_name = monkey_patch_data['cls']
                 dat_path = monkey_patch_data['dat']
 
-                dat = td.op(dat_path)
+                dat_op = monkey_patch_data.get('dat_op')
+                dat = td.op(dat_path) if dat_path else None
+                if not (dat and dat.valid) and dat_op and dat_op.valid:
+                    dat = dat_op
                 current_hash = None
                 if dat and dat.valid:
                     import hashlib
@@ -1628,17 +1633,18 @@ class OProxyContainer(OProxyBaseWrapper):
 
         for stored_key, op_info in ops_data.items():
             if isinstance(op_info, str):
-                # Legacy format support (simple path string)
                 op_path = op_info
                 stored_op = None
                 op_extensions = {}
                 monkey_patch_data = None
-            else:
-                # New format (object with path, raw OP, and extensions)
+            elif hasattr(op_info, 'get') and hasattr(op_info, 'keys'):  # Detect dict-like (e.g., DependDict)
                 op_path = op_info.get('path', '')
-                stored_op = op_info.get('op')  # Raw OP object for name change detection
+                stored_op = op_info.get('op')
                 op_extensions = op_info.get('extensions', {})
                 monkey_patch_data = op_info.get('monkey_patch')
+            else:
+                Log(f"Invalid op_info type for '{stored_key}': {type(op_info).__name__}, skipping", status='warning', process='_refresh')
+                continue
 
             Log(f"Loading nested OP '{stored_key}' from '{op_path}'", status='debug', process='_refresh')
 
@@ -1796,49 +1802,55 @@ class OProxyContainer(OProxyBaseWrapper):
             ops_data = container_data.get('ops', {})
             for op_name, op_info in ops_data.items():
                 if isinstance(op_info, str):
-                    # Legacy format support (simple path string)
                     op_path = op_info
                     stored_op = None
                     op_extensions = {}
-                else:
-                    # New format (object with path, raw OP, and extensions)
+                    monkey_patch_data = None
+                elif isinstance(op_info, dict):
                     op_path = op_info.get('path', '')
-                    stored_op = op_info.get('op')  # Raw OP object for name change detection
+                    stored_op = op_info.get('op')
                     op_extensions = op_info.get('extensions', {})
+                    monkey_patch_data = op_info.get('monkey_patch')
+                else:
+                    Log(f"Invalid op_info type for '{op_name}': {type(op_info).__name__}, skipping", status='warning', process='_refresh')
+                    continue
 
                 Log(f"Loading nested OP '{op_name}' from '{op_path}'", status='debug', process='_refresh')
 
-                # Try to get OP by stored path first
                 op = td.op(op_path) if op_path else None
 
-                # If that fails but we have a stored OP object, use it (handles renames)
                 if not (op and op.valid) and stored_op and stored_op.valid:
                     op = stored_op
-                    Log(f"Using stored OP object for nested '{op_name}' (original path may have changed)", status='debug', process='_refresh')
+                    Log(f"Using stored OP object for '{op_name}' (path may have changed)", status='debug', process='_refresh')
 
                 if op and op.valid:
-                    # Check for name changes
                     current_name = op.name
                     if op_name != current_name:
-                        Log(f"Nested OP name changed from '{op_name}' to '{current_name}', updating mapping", status='info', process='_refresh')
+                        Log(f"OP name changed from '{op_name}' to '{current_name}', updating mapping", status='info', process='_refresh')
                         actual_key = current_name
                     else:
-                        actual_key = op_name
+                        actual_key = stored_key
 
                     leaf_path = f"{container_path}.{actual_key}"
-                    monkey_patch_data = op_info.get('monkey_patch') if not isinstance(op_info, str) else None
                     if monkey_patch_data:
                         cls_name = monkey_patch_data['cls']
                         dat_path = monkey_patch_data['dat']
-                        mod_ast = mod('mod_AST')
-                        extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
-                        leaf = extracted_cls(op=op, path=leaf_path, parent=container)
-                        leaf._monkey_patch = monkey_patch_data
-                        Log(f"Loading monkey patch leaf '{actual_key}' with '{cls_name}'", status='info', process='_refresh')
+                        dat_op = monkey_patch_data.get('dat_op')
+                        dat = td.op(dat_path) if dat_path else None
+                        if not (dat and dat.valid) and dat_op and dat_op.valid:
+                            dat = dat_op
+                        if dat and dat.valid:
+                            mod_ast = mod('mod_AST')
+                            extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat, log=Log)
+                            leaf = extracted_cls(op=op, path=leaf_path, parent=container)
+                            leaf._monkey_patch = monkey_patch_data
+                            Log(f"Loading monkey patch leaf '{actual_key}' with '{cls_name}'", status='info', process='_refresh')
+                        else:
+                            Log(f"Could not resolve DAT for leaf monkey patch '{cls_name}' on '{actual_key}'", status='warning', process='_refresh')
+                            leaf = OProxyLeaf(op, path=leaf_path, parent=container)
                     else:
                         leaf = OProxyLeaf(op, path=leaf_path, parent=container)
 
-                    # Load extensions onto the leaf
                     if op_extensions:
                         leaf._extensions = op_extensions
                         # Re-apply extensions (will be implemented in _extend)
@@ -1929,7 +1941,7 @@ class OProxyContainer(OProxyBaseWrapper):
                 dat_op = td_isinstance(dat, 'textdat', allow_string=True)
                 import hashlib
                 code_hash = hashlib.sha256(dat_op.text.encode('utf-8')).hexdigest()
-                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path, 'code_hash': code_hash}
+                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path, 'code_hash': code_hash, 'dat_op': dat_op}
                 self._children[attr_name] = new_instance
             elif isinstance(existing, OProxyLeaf):
                 if not issubclass(extracted_cls, OProxyLeaf):
@@ -1941,7 +1953,7 @@ class OProxyContainer(OProxyBaseWrapper):
                 dat_op = td_isinstance(dat, 'textdat', allow_string=True)
                 import hashlib
                 code_hash = hashlib.sha256(dat_op.text.encode('utf-8')).hexdigest()
-                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path, 'code_hash': code_hash}
+                new_instance._monkey_patch = {'cls': cls, 'dat': dat_op.path, 'code_hash': code_hash, 'dat_op': dat_op}
                 self._children[attr_name] = new_instance
 
             root = self._find_root()

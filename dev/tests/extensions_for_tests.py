@@ -17,7 +17,8 @@ class myClass:
 		return 'testFunc called I AM WORKING YAY'
 
 class Wrapper:
-	'''Use a wrapper cls so inheritance can be defined properly'''
+	'''Use a wrapper class so top level imports can be defined for all classes'''
+
 	mp = mod('OProxy/MonkeyPatch')
 	log = op('OProxy').Log
 	td_isinstance = mod('OProxy/utils').td_isinstance
@@ -47,3 +48,17 @@ class Wrapper:
 
 			# Return the proxy instead of the raw leaf
 			return ResolutionProxy(leaf)
+
+	class helloWorld(mp.OProxyLeaf):
+		def __init__(self, *args, **kwargs):
+			super().__init__(*args, **kwargs)
+
+		def helloWorld(self):
+			info = {
+				'name': self._op.name,
+				'path': self._op.path,
+				'parent_path': self._op.parent().path if self._op.parent() else None,
+				'op_type': self._op.OPType,
+				'new_data': 'hello world'
+			}
+			return info

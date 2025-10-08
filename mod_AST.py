@@ -186,6 +186,7 @@ def Main(cls=None, func=None, source_dat=None, log=None):
         temp_parent = source_op.parent()
         temp_dat = temp_parent.create(textDAT, '_oproxy_temp_mod_ast')
         temp_dat.text = prepended
+        log(f"Temp DAT contents for {target_name}:\n{prepended}", status='debug', process='mod_AST:TempDAT')
         temp_dat.cook(force=True)
 
         # Load via mod
