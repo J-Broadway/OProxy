@@ -1,33 +1,12 @@
-<OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: []
- Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 1 containers
- Reloading empty hierarchy
-<OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
+<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
+ Extension 'inlineClass' and all nested extensions removed successfully
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:info]> 
 Adding containe opr._add('items', tf.mvs) 
 
-<OProxy [DEBUG:_add]> Processing 'items' in container 'root'
 <OProxy [INFO:_add]> Creating new container 'items'
-<OProxy [DEBUG:_add]> List of OPs provided, count: 3
- Validating OP 1/3: op1
- Validated OP: op1 (path: /project1/myProject/op1)
- Validating OP 2/3: op2
- Validated OP: op2 (path: /project1/myProject/op2)
- Validating OP 3/3: op3
- Validated OP: op3 (path: /project1/myProject/op3)
- Creating container with path 'items'
-<OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
-<OProxy [DEBUG:_add]> Adding 3 OPs as leaves to container 'items'
- Creating leaf for OP 'op1' with path 'items.op1'
- Creating leaf for OP 'op2' with path 'items.op2'
- Creating leaf for OP 'op3' with path 'items.op3'
- Adding container 'items' to parent children dict
-<OProxy [INFO:_add]> Successfully created container 'items' with 3 OPs
-<OProxy [DEBUG:_update_storage]> Saving container hierarchy to storage
- Saved 1 top-level containers to storage
+ Successfully created container 'items' with 3 OPs
 <OProxy [TEST:info]> 
 Showing storage after _add()
 
@@ -77,7 +56,6 @@ verifying that MonkeyPatch path is correct
 <OProxy [TEST:info]> 
  now running opr._extend('items', cls='OProxyContainer', dat='extensions_for_tests', monkey_patch=True)
 
-<OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
 <OProxy [INFO:_extend]> Monkey-patched 'items' with 'OProxyContainer'
 <OProxy [TEST:info]> 
 showing storage after _extend()
@@ -117,7 +95,7 @@ showing storage after _extend()
             "monkey_patch": {
                 "cls": "OProxyContainer",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95",
+                "code_hash": "6ba08c41bf4056ce1053b9095dac32f9115a16d3511726065a3d7ef59f4494ec",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -131,37 +109,21 @@ showing storage after _extend()
 <OProxy [TEST:info]> 
 Now going to call the monkey patched container
 
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
 <OProxy [INFO]> [1280, 720]
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op2') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
-<OProxy [INFO]> [1000, 1000]
+ [1000, 1000]
 <OProxy [TEST:info]> 
 Now testing storage persistence after container is re-initialized
 
-<OProxy [DEBUG:__init__]> Initializing OProxyContainer '' with parent: None, root: True
-<OProxy [DEBUG:Migration]> Checking for storage format migration
- Storage already in new format, no migration needed
-<OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
- Loading nested container 'items' under ''
-<OProxy [DEBUG:__init__]> Initializing OProxyContainer '.items' with parent: OProxyContainer 'root' [], root: False
 <OProxy [INFO:_refresh]> Loading monkey patch container 'items' with 'OProxyContainer'
-<OProxy [DEBUG:_refresh]> Loading nested OP 'op1' from '/project1/myProject/op1'
- Loading nested OP 'op2' from '/project1/myProject/op2'
- Loading nested OP 'op3' from '/project1/myProject/op3'
- Refreshing container '.items' - parent: OProxyContainer 'root' [], is_root: False
 <OProxy [INFO:Init]> OProxy root initialized
 <OProxy [TEST:info]> 
 Calling "resolution()" on monkey patched containers
 
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op1'
 <OProxy [INFO]> [1280, 720]
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op2') returning <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> with path 'items.op2'
-<OProxy [INFO]> [1000, 1000]
+ [1000, 1000]
 <OProxy [TEST:info]> 
 Now testing a monkey patched OPLeaf
 
-<OProxy [DEBUG:_extend]> Monkey-patching leaf 'op1' from <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> to <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
- Replaced leaf 'op1' in children: <class '/project1/myProject/OProxy/OProxyBaseWrapper.OProxyLeaf'> -> <class '/project1/myProject/OProxy/mod_AST.helloWorld'>
 <OProxy [INFO:_extend]> Monkey-patched 'op1' with 'helloWorld'
 <OProxy [TEST:info]> 
 checking storage after adding helloWorld monkey patch
@@ -182,7 +144,7 @@ checking storage after adding helloWorld monkey patch
                     "monkey_patch": {
                         "cls": "helloWorld",
                         "dat": "/project1/myProject/extensions_for_tests",
-                        "code_hash": "15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95",
+                        "code_hash": "6ba08c41bf4056ce1053b9095dac32f9115a16d3511726065a3d7ef59f4494ec",
                         "dat_op": {
                             "name": "extensions_for_tests",
                             "type": "textDAT",
@@ -211,7 +173,7 @@ checking storage after adding helloWorld monkey patch
             "monkey_patch": {
                 "cls": "OProxyContainer",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95",
+                "code_hash": "6ba08c41bf4056ce1053b9095dac32f9115a16d3511726065a3d7ef59f4494ec",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -225,15 +187,11 @@ checking storage after adding helloWorld monkey patch
 <OProxy [TEST:info]> 
 Calling "helloWorld()" on monkey patched OPLeaf
 
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path 'items.op1'
 <OProxy [INFO]> {'name': 'op1', 'path': '/project1/myProject/op1', 'parent_path': '/project1/myProject', 'op_type': 'moviefileinTOP', 'new_data_updated': 'hello world'}
 <OProxy [TEST:info]> 
 Now going to run "monkey_patch_outside_tests" to make sure persistence works
 
-<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
 <OProxy [INFO:__call__]> Restored monkey patch for leaf 'op1' with 'helloWorld'
-<OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
- OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
 <OProxy [TEST:info]> 
 extension persistence working thus far!
 

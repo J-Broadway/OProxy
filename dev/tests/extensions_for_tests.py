@@ -18,10 +18,9 @@ class myClass:
 
 class mpWrapper:
 	'''Use a wrapper class so top level imports can be defined for all classes'''
-
-	mp = mod('OProxy/MonkeyPatch')
-	log = op('OProxy').Log
-	td_isinstance = mod('OProxy/utils').td_isinstance
+	mp 				= mod('OProxy/MonkeyPatch') # Loaed helpers for monkey patching
+	log 			= mod('OProxy/MonkeyPatch').log
+	td_isinstance	= mod('OProxy/utils').td_isinstance
 
 	class OProxyContainer(mp.OProxyContainer):
 		"""Monkey-patched container that adds both resolution() and custom .par() method behavior on leaves."""
@@ -41,7 +40,7 @@ class mpWrapper:
 					"""Called when doing .par(customFlag=True)"""
 					if customFlag:
 						log(f"Custom flag activated for {self._leaf._op.name}")
-						# Implement your custom logic here
+						# Implement your custom mp.logic here
 
 					# Return the actual TouchDesigner par object for chaining
 					return self._leaf._op.par
