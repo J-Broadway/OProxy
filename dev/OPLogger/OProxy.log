@@ -1,12 +1,8 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: ['myFunc', 'inlineClass']
-<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'myFunc'
-<OProxy [INFO:_remove]> Extension 'inlineClass' and all nested extensions removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'inlineClass'
+<OProxy [DEBUG:_clear]> Clearing root extensions: []
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 0 containers
+ Clearing in-memory hierarchy with 1 containers
  Reloading empty hierarchy
 <OProxy [INFO:_clear]> _clear operation completed
 <OProxy [TEST:info]> 
@@ -128,3 +124,14 @@ Now going to call the monkey patched container
 
 <OProxy [INFO]> (1280, 720)
  (1000, 1000)
+<OProxy [DEBUG:Migration]> Checking for storage format migration
+ Storage already in new format, no migration needed
+<OProxy [DEBUG:_refresh]> Loading nested container 'items' under ''
+<OProxy [INFO:_refresh]> Loading monkey patch container 'items' with 'ResolutionMP'
+<OProxy [DEBUG:_refresh]> Loading nested OP 'op1' from '/project1/myProject/op1'
+ Loading nested OP 'op2' from '/project1/myProject/op2'
+ Loading nested OP 'op3' from '/project1/myProject/op3'
+ Loading nested OP 'op1' from '/project1/myProject/op1'
+ Loading nested OP 'op2' from '/project1/myProject/op2'
+ Loading nested OP 'op3' from '/project1/myProject/op3'
+<OProxy [INFO:Init]> OProxy root initialized

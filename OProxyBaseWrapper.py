@@ -1680,6 +1680,7 @@ class OProxyContainer(OProxyBaseWrapper):
                 extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
                 container = extracted_cls(path=container_path, parent=parent_container, ops=None, root=False)
                 container._monkey_patch = monkey_patch_data
+                Log(f"Loading monkey patch container '{container_name}' with '{cls_name}'", status='info', process='_refresh')
             else:
                 container = OProxyContainer(path=container_path, parent=parent_container)
             container._extensions = container_data.get('extensions', {})
@@ -1726,6 +1727,7 @@ class OProxyContainer(OProxyBaseWrapper):
                         extracted_cls = mod_ast.Main(cls=cls_name, func=None, source_dat=dat_path, log=Log)
                         leaf = extracted_cls(op=op, path=leaf_path, parent=container)
                         leaf._monkey_patch = monkey_patch_data
+                        Log(f"Loading monkey patch leaf '{actual_key}' with '{cls_name}'", status='info', process='_refresh')
                     else:
                         leaf = OProxyLeaf(op, path=leaf_path, parent=container)
 
