@@ -16,38 +16,61 @@ class myClass:
 	def testFunc(self):
 		return 'testFunc called I AM WORKING YAY'
 
-class Wrapper:
+class mpWrapper:
 	'''Use a wrapper class so top level imports can be defined for all classes'''
 
 	mp = mod('OProxy/MonkeyPatch')
 	log = op('OProxy').Log
 	td_isinstance = mod('OProxy/utils').td_isinstance
 
-	class ResolutionMP(mp.OProxyContainer):
-		"""Monkey-patched container that adds resolution() to leaves."""
+	class OProxyContainer(mp.OProxyContainer):
+		"""Monkey-patched container that adds both resolution() and custom .par() method behavior on leaves."""
 
 		def __call__(self, identifier, **kwargs):
 			# Call parent's __call__ to get the original OProxyLeaf
 			leaf = super().__call__(identifier, **kwargs)
 
-			# Create a proxy wrapper to add custom methods to the leaf
-			class ResolutionProxy:
+			# Define the custom par accessor locally
+			class CustomParAccessor:
+				"""Custom parameter accessor that supports method-style calls."""
+
 				def __init__(self, leaf):
-					self._leaf = leaf  # Store the original leaf
+					self._leaf = leaf
+
+				def __call__(self, customFlag=False, **kwargs):
+					"""Called when doing .par(customFlag=True)"""
+					if customFlag:
+						log(f"Custom flag activated for {self._leaf._op.name}")
+						# Implement your custom logic here
+
+					# Return the actual TouchDesigner par object for chaining
+					return self._leaf._op.par
 
 				def __getattr__(self, name):
+					"""Allow direct attribute access like .par.width"""
+					return getattr(self._leaf._op.par, name)
+
+			# Create a proxy wrapper that combines both functionalities
+			class CustomProxy:
+				def __init__(self, inner_leaf):
+					self._inner = inner_leaf
+
+				def __getattr__(self, name):
+					if name == 'par':
+						# Return a custom par object that can be called with parameters
+						return CustomParAccessor(self._inner)
 					# Delegate all other attribute access to the original leaf
-					return getattr(self._leaf, name)
+					return getattr(self._inner, name)
 
 				def resolution(self):
 					# Custom method: Check if the OP is a TOP, then return resolution
-					if not td_isinstance(self._leaf._op, 'top'):
+					if not td_isinstance(self._inner._op, 'top'):
 						log("Not a TOP operator", status='error')
 						raise ValueError("resolution() only for TOPs")
-					return [self._leaf._op.width, self._leaf._op.height]
+					return [self._inner._op.width, self._inner._op.height]
 
 			# Return the proxy instead of the raw leaf
-			return ResolutionProxy(leaf)
+			return CustomProxy(leaf)
 
 	class helloWorld(mp.OProxyLeaf):
 		def __init__(self, *args, **kwargs):

@@ -1,12 +1,8 @@
 <OProxy [DEBUG:Flush]> 
 <OProxy [INFO:_clear]> Starting _clear operation
-<OProxy [DEBUG:_clear]> Clearing root extensions: ['myFunc', 'inlineClass']
-<OProxy [INFO:_remove]> Extension 'myFunc' and all nested extensions removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'myFunc'
-<OProxy [INFO:_remove]> Extension 'inlineClass' and all nested extensions removed successfully
-<OProxy [DEBUG:_clear]> Removed root extension 'inlineClass'
+<OProxy [DEBUG:_clear]> Clearing root extensions: []
  Restoring OProxies to default empty state
- Clearing in-memory hierarchy with 0 containers
+ Clearing in-memory hierarchy with 1 containers
  Reloading empty hierarchy
 <OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
 <OProxy [INFO:_clear]> _clear operation completed
@@ -79,10 +75,10 @@ verifying that MonkeyPatch path is correct
 
 <OProxy [INFO]> hello world
 <OProxy [TEST:info]> 
- now running opr._extend('items', cls='ResolutionMP', dat='extensions_for_tests', monkey_patch=True)
+ now running opr._extend('items', cls='OProxyContainer', dat='extensions_for_tests', monkey_patch=True)
 
 <OProxy [DEBUG:__init__]> Initializing OProxyContainer 'items' with parent: OProxyContainer 'root' [], root: False
-<OProxy [INFO:_extend]> Monkey-patched 'items' with 'ResolutionMP'
+<OProxy [INFO:_extend]> Monkey-patched 'items' with 'OProxyContainer'
 <OProxy [TEST:info]> 
 showing storage after _extend()
 
@@ -119,9 +115,9 @@ showing storage after _extend()
             },
             "extensions": {},
             "monkey_patch": {
-                "cls": "ResolutionMP",
+                "cls": "OProxyContainer",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb",
+                "code_hash": "15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -148,7 +144,7 @@ Now testing storage persistence after container is re-initialized
 <OProxy [DEBUG:_refresh]> Refreshing container '' - parent: None, is_root: True
  Loading nested container 'items' under ''
 <OProxy [DEBUG:__init__]> Initializing OProxyContainer '.items' with parent: OProxyContainer 'root' [], root: False
-<OProxy [INFO:_refresh]> Loading monkey patch container 'items' with 'ResolutionMP'
+<OProxy [INFO:_refresh]> Loading monkey patch container 'items' with 'OProxyContainer'
 <OProxy [DEBUG:_refresh]> Loading nested OP 'op1' from '/project1/myProject/op1'
  Loading nested OP 'op2' from '/project1/myProject/op2'
  Loading nested OP 'op3' from '/project1/myProject/op3'
@@ -186,7 +182,7 @@ checking storage after adding helloWorld monkey patch
                     "monkey_patch": {
                         "cls": "helloWorld",
                         "dat": "/project1/myProject/extensions_for_tests",
-                        "code_hash": "907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb",
+                        "code_hash": "15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95",
                         "dat_op": {
                             "name": "extensions_for_tests",
                             "type": "textDAT",
@@ -213,9 +209,9 @@ checking storage after adding helloWorld monkey patch
             },
             "extensions": {},
             "monkey_patch": {
-                "cls": "ResolutionMP",
+                "cls": "OProxyContainer",
                 "dat": "/project1/myProject/extensions_for_tests",
-                "code_hash": "907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb",
+                "code_hash": "15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95",
                 "dat_op": {
                     "name": "extensions_for_tests",
                     "type": "textDAT",
@@ -234,7 +230,7 @@ Calling "helloWorld()" on monkey patched OPLeaf
 <OProxy [TEST:info]> 
 Now going to run "monkey_patch_outside_tests" to make sure persistence works
 
-<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '907ee44716fdf751fe495f58edff8df0f60d9e7f5b250d0dcc6ec02fb9f467eb', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
+<OProxy [DEBUG:__call__]> Found stored monkey patch data for leaf 'op1', restoring: {'cls': 'helloWorld', 'dat': '/project1/myProject/extensions_for_tests', 'code_hash': '15a872f0b73005d156eeeb0d106eced6259c70d4f286100bcd2de921980c8c95', 'dat_op': type:textDAT path:/project1/myProject/extensions_for_tests}
 <OProxy [INFO:__call__]> Restored monkey patch for leaf 'op1' with 'helloWorld'
 <OProxy [DEBUG:__call__]> OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
  OProxyContainer.__call__('op1') returning <class '/project1/myProject/OProxy/mod_AST.helloWorld'> with path '.items.op1'
